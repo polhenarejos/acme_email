@@ -1,22 +1,10 @@
-#!/usr/bin/env python3
-
-import logging, re
+import logging
 
 import zope.interface
-from OpenSSL import crypto
 
-from acme import challenges
 from acme import messages
-from acme import standalone as acme_standalone
-from certbot import achallenges
 from certbot import interfaces
-from certbot import crypto_util
-from certbot import util
-from certbot import errors
 from certbot.plugins import common
-from certbot.compat import os
-from certbot.display import ops
-from certbot.display import util as display_util
 
 from certbot_castle import challenge
 
@@ -28,7 +16,7 @@ logger = logging.getLogger(__name__)
 @zope.interface.provider(interfaces.IPluginFactory)
 class Authenticator(common.Plugin):
 
-    description = "Performs a S/MIME challenge"
+    description = "Performs the S/MIME challenge"
 
     def __init__(self, *args, **kwargs):
         super(Authenticator, self).__init__(*args, **kwargs)
