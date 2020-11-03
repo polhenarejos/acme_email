@@ -12,6 +12,7 @@ setup(
     entry_points={
         'certbot.plugins': [
             'castle-interactive = certbot_castle.plugins.interactive:Authenticator',
+            'castle-installer = certbot_castle.plugins.installer:Installer',
         ],
     },
 )
