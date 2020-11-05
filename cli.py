@@ -87,6 +87,13 @@ def request_cert(args, config):
     cli_args.extend(['--server','https://acme.castle.cloud/acme/directory'])
     cli_args.extend(['-a','castle-interactive'])
     cli_args.extend(['-i','castle-installer'])
+    cli_args.extend(['-m',args.contact])
+    if (args.agree_tos):    
+        cli_args.extend(['--agree-tos'])
+    if (args.non_interactive):    
+        cli_args.extend(['-n'])
+    if (args.dry_run):    
+        cli_args.extend(['--dry-run'])
     config,plugins = prepare_config(cli_args)
     config.key_path = key.file
     try:
@@ -109,7 +116,6 @@ def main(args):
     log.pre_arg_parse_setup()
     cli_args = prepare_cli_args(args)
     config,_ = prepare_config(cli_args)
-    certbot_main.make_or_verify_needed_dirs(config)
     try:
         log.post_arg_parse_setup(config)
         certbot_main.make_or_verify_needed_dirs(config)
@@ -119,7 +125,7 @@ def main(args):
     report = reporter.Reporter(config)
     zope.component.provideUtility(report)
     util.atexit_register(report.print_messages)
-     
+
     if (command == 'cert'):
         request_cert(args, config)
         
