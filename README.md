@@ -13,7 +13,7 @@ Despite the ACME e-mail S/MIME specification is still under draft, it describes 
 We implemented the ACME server at CASTLE Platform® and it fits and follows the specifications for obtaining S/MIME certificates. Obviously, CASTLE Platform® Certification Authority is not the same as Let's Encrypt, it uses its own. Fortunately, CASTLE Platform® CA follows the same standards as other common CA, with the same compatibilities and extensions. If CASTLE Platform® CA is trusted, the obtained S/MIME certificate is likely similar to the ones obtained through paying CA.
 
 ## How to use it
-ACME E-mail S/MIME client uses the Certbot framework for managing ACME protocols. However, the official software does not provide support for S/MIME certification. To cirvument this issue, we bypass some procedures (CSR mainly) to acomplish standard specifications. `cli.py` performs all this stuff by generating CSR with the correct extension and executes Certbot with the correct parameters.
+ACME E-mail S/MIME client uses the Certbot framework for managing ACME protocols. However, the official software does not provide support for S/MIME certification. To cirvument this issue, we bypass some procedures (CSR -- Certificate Signature Request mainly) to acomplish standard specifications. `cli.py` performs all this stuff by generating CSR with the correct extension and executes Certbot with the correct parameters.
 
 To use it:
     usage: cli.py [-h] -e EMAIL [-t] [--dry-run] [-n] [-c CONFIG_DIR] [-w WORK_DIR] [-l LOGS_DIR] [--agree-tos AGREE_TOS] [--contact CONTACT] {cert,revoke,renew}
@@ -64,3 +64,16 @@ You can optionally protect the PKCS12 container with a passphrase. Since it cont
 **IMPORTANT: Remind that your private key is not transmitted to ACME server, nor flows through internet at any time. The CSR contains your public key linked to your private key and the ACME server generates the public certificate based on it, without the need of the private key.**
 
 _(Reminder: private and public keys are generated automatically, you do not have to worry about that.)_
+
+## TL;DR (some technical aspects)
+Certbot is a magnific software. It manages the ACME procedure and gives a support for customized plugins. However, it only supports "dns" Identifier Types in the CSR and here is where the problem arises. S/MIME certificates (and also specifications) require that Identifier Types **must be** "email". The ACME server could replace "dns" for "email" in the CSR but this is not possible, as the CSR is signed with the private key and it is unalterable. 
+
+Fortunately, Certbot supports the `--csr` parameter, which allows to provide an external CSR instead of auto-generated CSR. 
+
+The rest of the client is composed by three modules: 
+
+1. Authenticator plugin: it performs the authentication task, generating the ACME response by using the `<token>` provided in the subject.
+2. Installation plugin: it generates the PKCS12 container with the private key and certificate.
+3. Challenges: it defines the EmailReply-00 challenge, described in the specification draft. 
+
+Thanks to this, we are able to write on my own code and leave the Certbot code unmodified. Of course, if in a future Certbot supports "email" Identifier Type and ACME S/MIME challenges, all my words will be useless. In the meantime, you can use it.
