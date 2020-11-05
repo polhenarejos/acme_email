@@ -45,4 +45,22 @@ Some of the parameters are shared by Certbot software, since it manages the prot
 
 ### Example
 For obtaining an S/MIME certificate
-`python3 cli.py cert --config-dir . --work-dir . --logs-dir . -e trocotronic@redyc.com --contact trocotronic@redyc.com`
+
+`python3 cli.py cert --config-dir . --work-dir . --logs-dir . -e address@domain.com --contact contact@anotherdomain.com`
+
+where `address@domain.com` is the e-mail address to certify and `contact@anotherdomain.com` is just the contact address for receiving notifications related with the account. Contact address is only used the first time. It can be ommitted in subsequent calls.
+
+After this, the client will negotiate with CASTLE Platform® ACME server for obtaining an S/MIME certificate. 
+1. An e-mail will be send to `address@domain.com` with a challenge subject. The client will wait for the token you will receive in the `address@domain.com`.
+2. The subject has the form of `ACME: <token>`. The `<token>` part is needed for passing the challenge.
+3. Copy the **entire** subject (with the `ACME: `part included) and paste it to the client terminal. 
+4. With the `<token>`you provided, the client will generate the **challenge response**, which has the form `-----BEGIN ACME RESPONSE-----...-----END ACME RESPONSE-----`.
+5. Copy the response and reply the ACME e-mail you received. Paste the challenge response in the **top of the message's body** and send it back to the ACME server.
+
+If everything goes well, the ACME server will grant your request and will issue a certificate. This certificate will be downloaded automatically and the client will put in a PKCS12 container. The client also will put the private key in the PKCS12 container. The PKCS12 container is a standard object, used for importing public and private keys to the Keychain. Often is used by e-mail clients for selecting the S/MIME certificate, used for signature and encryption. 
+
+You can optionally protect the PKCS12 container with a passphrase. Since it contains your private key, **it is highly recommended** to protect the PKCS12 container with a strong passphrase. The client will prompt you for a passphrase before generating the PKCS12. _This step cannot be automatized, as it requires your attention._
+
+**IMPORTANT: Remind that your private key is not transmitted to ACME server, nor flows through internet at any time. The CSR contains your public key linked to your private key and the ACME server generates the public certificate based on it, without the need of the private key.**
+
+_(Reminder: private and public keys are generated automatically, you do not have to worry about that.)_
