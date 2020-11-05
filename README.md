@@ -11,3 +11,38 @@ Let's Encrypt ACME system is robust and represents a major step for securing the
 Despite the ACME e-mail S/MIME specification is still under draft, it describes the procedure to validate the authenticity of an e-mail. It does not validates the identify of the subject behind the e-mail address, only the recipient. As with the ACME HTTPS specification, which does not validate the identify of the company behind a domain, ACME e-mail S/MIME specification describes the validity of a particular e-mail address.
 
 We implemented the ACME server at CASTLE Platform® and it fits and follows the specifications for obtaining S/MIME certificates. Obviously, CASTLE Platform® Certification Authority is not the same as Let's Encrypt, it uses its own. Fortunately, CASTLE Platform® CA follows the same standards as other common CA, with the same compatibilities and extensions. If CASTLE Platform® CA is trusted, the obtained S/MIME certificate is likely similar to the ones obtained through paying CA.
+
+## How to use it
+ACME E-mail S/MIME client uses the Certbot framework for managing ACME protocols. However, the official software does not provide support for S/MIME certification. To cirvument this issue, we bypass some procedures (CSR mainly) to acomplish standard specifications. `cli.py` performs all this stuff by generating CSR with the correct extension and executes Certbot with the correct parameters.
+
+To use it:
+    usage: cli.py [-h] -e EMAIL [-t] [--dry-run] [-n] [-c CONFIG_DIR] [-w WORK_DIR] [-l LOGS_DIR] [--agree-tos AGREE_TOS] [--contact CONTACT] {cert,revoke,renew}
+    
+    Requests a S/MIME certificate
+    
+    positional arguments:
+      {cert,revoke,renew}
+    
+    optional arguments:
+      -h, --help            show this help message and exit
+      -e EMAIL, --email EMAIL
+                            E-mail of the issued certificate
+      -t, --test            Tests the certification from a staging server
+      --dry-run             Do not store any file. For testing
+      -n, --non-interactive
+                            Runs the certification without any user interaction
+      -c CONFIG_DIR, --config-dir CONFIG_DIR
+                            Configuration directory
+      -w WORK_DIR, --work-dir WORK_DIR
+                            Working directory
+      -l LOGS_DIR, --logs-dir LOGS_DIR
+                            Logs directory
+      --agree-tos AGREE_TOS
+                            Logs directory
+      --contact CONTACT     Contact e-mail for important account notifications
+	  
+Some of the parameters are shared by Certbot software, since it manages the protocol stack and data flow between the client and the ACME server. Sooner more parameters will be added.
+
+### Example
+For obtaining an S/MIME certificate
+`python3 cli.py cert --config-dir . --work-dir . --logs-dir . -e trocotronic@redyc.com --contact trocotronic@redyc.com`
