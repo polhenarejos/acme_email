@@ -3,19 +3,20 @@ ACME Email Client for **EmailReply-00 Challenge** to obtain S/MIME certificate.
 
 Let's Encrypt ACME for retrieving HTTPS certificates are widely used and it defined a standard by obtaining certificates in an automatized way. ACME Email S/MIME client aims at performing the same protocol but for S/MIME certification. It is based on *[Extensions to Automatic Certificate Management Environment for end-user S/MIME certificates](https://tools.ietf.org/html/draft-ietf-acme-email-smime "Extensions to Automatic Certificate Management Environment for end-user S/MIME certificates")* draft specification, which is an extension to the ACME protocol [[RFC 8555](https://tools.ietf.org/html/rfc8555 "RFC 8555")]. Despite it is a draft, it is the only living specification that describes the procedure for obtaining automatic S/MIME certificates.
 
-With CASTLE Platform® ACME Server, ACME Email S/MIME Client can obtain S/MIME certificates by using Certbot. With S/MIME certificates, e-mails, pdf, docx, etc. can be signed to proof the integrity of the source and authorship. Despite other platforms that require to pay for obtaining these certificates, CASTLE Platform® ACME Server offers it **by free**.
+With [CASTLE Platform® ACME Server](https://acme.castle.cloud/ "CASTLE Platform® ACME Server"), ACME Email S/MIME Client can obtain S/MIME certificates by using Certbot. With S/MIME certificates, e-mails, pdf, docx, etc. can be signed to proof the integrity of the source and authorship. Despite other platforms that require to pay for obtaining these certificates, [CASTLE Platform® ACME Server](https://acme.castle.cloud/ "CASTLE Platform® ACME Server") offers it **by free**.
 
 ## Why
 Let's Encrypt ACME system is robust and represents a major step for securing the web. However, there is no possibility to extend it to e-mail and document signing. I do not know which is their roadmap, but I think that S/MIME certificates are the next natural step.
 
 Despite the ACME e-mail S/MIME specification is still under draft, it describes the procedure to validate the authenticity of an e-mail. It does not validates the identify of the subject behind the e-mail address, only the recipient. As with the ACME HTTPS specification, which does not validate the identify of the company behind a domain, ACME e-mail S/MIME specification describes the validity of a particular e-mail address.
 
-We implemented the ACME server at CASTLE Platform® and it fits and follows the specifications for obtaining S/MIME certificates. Obviously, CASTLE Platform® Certification Authority is not the same as Let's Encrypt, it uses its own. Fortunately, CASTLE Platform® CA follows the same standards as other common CA, with the same compatibilities and extensions. If CASTLE Platform® CA is trusted, the obtained S/MIME certificate is likely similar to the ones obtained through paying CA.
+We implemented the ACME server at [CASTLE Platform®](https://www.castle.cloud/ "CASTLE Platform®") and it fits and follows the specifications for obtaining S/MIME certificates. Obviously, [CASTLE Platform® Certification Authority](https://ca.castle.cloud/ "CASTLE Platform® CA") is not the same as Let's Encrypt, it uses its own. Fortunately, [CASTLE Platform® CA](https://ca.castle.cloud/ "CASTLE Platform® CA") follows the same standards as other common CA, with the same compatibilities and extensions. If [CASTLE Platform® CA](https://ca.castle.cloud/ "CASTLE Platform® CA") is trusted, the obtained S/MIME certificate is likely similar to the ones obtained through paying CA.
 
 ## How to use it
 ACME E-mail S/MIME client uses the Certbot framework for managing ACME protocols. However, the official software does not provide support for S/MIME certification. To cirvument this issue, we bypass some procedures (CSR -- Certificate Signature Request mainly) to acomplish standard specifications. `cli.py` performs all this stuff by generating CSR with the correct extension and executes Certbot with the correct parameters.
 
 To use it:
+
     usage: cli.py [-h] -e EMAIL [-t] [--dry-run] [-n] [-c CONFIG_DIR] [-w WORK_DIR] [-l LOGS_DIR] [--agree-tos AGREE_TOS] [--contact CONTACT] {cert,revoke,renew}
     
     Requests a S/MIME certificate
@@ -50,7 +51,7 @@ For obtaining an S/MIME certificate
 
 where `address@domain.com` is the e-mail address to certify and `contact@anotherdomain.com` is just the contact address for receiving notifications related with the account. Contact address is only used the first time. It can be ommitted in subsequent calls.
 
-After this, the client will negotiate with CASTLE Platform® ACME server for obtaining an S/MIME certificate. 
+After this, the client will negotiate with [CASTLE Platform® ACME Server](https://acme.castle.cloud/ "CASTLE Platform® ACME Server") for obtaining an S/MIME certificate. 
 1. An e-mail will be send to `address@domain.com` with a challenge subject. The client will wait for the token you will receive in the `address@domain.com`.
 2. The subject has the form of `ACME: <token>`. The `<token>` part is needed for passing the challenge.
 3. Copy the **entire** subject (with the `ACME: `part included) and paste it to the client terminal. 
@@ -77,3 +78,16 @@ The rest of the client is composed by three modules:
 3. Challenges: it defines the EmailReply-00 challenge, described in the specification draft. 
 
 Thanks to this, we are able to write on my own code and leave the Certbot code unmodified. Of course, if in a future Certbot supports "email" Identifier Type and ACME S/MIME challenges, all my words will be useless. In the meantime, you can use it.
+
+## License
+All the code in this repository is under GPLv3 license
+
+## About 
+ACME E-mail S/MIME Client and ACME E-mail S/MIME Server are part of the [CASTLE Platform®](https://www.castle.cloud/ "CASTLE Platform®"), a platform of the [Centre Tecnològic de Telecomunicacions de Catalunya (CTTC)](https://www.cttc.es "CTTC"). 
+
+Maintainer:
+* Pol Henarejos (pol.henarejos@cttc.es).
+
+The Centre Tecnològic de Telecomunicacions de Catalunya (CTTC) is a non-profit research institution based in Castelldefels (Barcelona), resulting from a public initiative of the Regional Government of Catalonia (Generalitat de Catalunya).
+
+Research activities at the CTTC, both fundamental and applied, mainly focus on technologies related to the physical, data-link and network layers of communication systems, and to the Geomatics.
