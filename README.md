@@ -66,6 +66,16 @@ You can optionally protect the PKCS12 container with a passphrase. Since it cont
 
 _(Reminder: private and public keys are generated automatically, you do not have to worry about that.)_
 
+### Current Features
+* The private key is generated locally on your system.
+* S/MIME challenge, defined in the draft specification.
+* PKCS12 certificate storaging, with embedded private key.
+* Can revoke certificates.
+* Adjustable RSA key bit-length (2048 (default), 4096, ...).
+* Fully automated.
+* Supports an interactive text UI, or can be driven entirely from the command line.
+* Free and Open Source Software, made with Python.
+
 ## TL;DR (some technical aspects)
 Certbot is a magnific software. It manages the ACME procedure and gives a support for customized plugins. However, it only supports "dns" Identifier Types in the CSR and here is where the problem arises. S/MIME certificates (and also specifications) require that Identifier Types **must be** "email". The ACME server could replace "dns" for "email" in the CSR but this is not possible, as the CSR is signed with the private key and it is unalterable. 
 
