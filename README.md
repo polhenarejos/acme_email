@@ -17,7 +17,10 @@ ACME E-mail S/MIME client uses the Certbot framework for managing ACME protocols
 
 To use it:
 
-    usage: cli.py [-h] -e EMAIL [-t] [--dry-run] [-n] [-c CONFIG_DIR] [-w WORK_DIR] [-l LOGS_DIR] [--agree-tos AGREE_TOS] [--contact CONTACT] {cert,revoke,renew}
+    usage: cli.py [-h] -e EMAIL [-t] [--dry-run] [-n] [-c CONFIG_DIR] [-w WORK_DIR] [-l LOGS_DIR] [--agree-tos AGREE_TOS] [--contact CONTACT] [--imap] [--login LOGIN] [--password PASSWORD] [--host HOST] [--port PORT] [--ssl]
+              [--smtp-method {STARTTLS,SSL,plain}] [--smtp-login SMTP_LOGIN] [--smtp-password SMTP_PASSWORD] [--smtp-host SMTP_HOST] [--smtp-port SMTP_PORT]
+              {cert,revoke,renew}
+
     
     Requests a S/MIME certificate
     
@@ -41,11 +44,29 @@ To use it:
       --agree-tos AGREE_TOS
                             Logs directory
       --contact CONTACT     Contact e-mail for important account notifications
+      --imap                Uses IMAP Authenticator for automatic reply
+      --login LOGIN         IMAP login
+      --password PASSWORD   IMAP password
+      --host HOST           IMAP server host
+      --port PORT           IMAP server port. If empty, it will be auto-detected
+      --ssl                 IMAP SSL connection
+      --smtp-method {STARTTLS,SSL,plain}
+                            SMTP method {STARTTLS,SSL,plain}
+      --smtp-login SMTP_LOGIN
+                            SMTP login. If empty, IMAP login will be used
+      --smtp-password SMTP_PASSWORD
+                            SMTP password. If empty, IMAP password will be used
+      --smtp-host SMTP_HOST
+                            SMTP server host
+      --smtp-port SMTP_PORT
+                             SMTP server port. If empty, it will be auto-detected
 	  
 Some of the parameters are shared by Certbot software, since it manages the protocol stack and data flow between the client and the ACME server. Sooner more parameters will be added.
 
 ### Example
-For obtaining an S/MIME certificate
+
+#### Using interactive authenticator
+For obtaining an S/MIME certificate with interactive authenticator. 
 
 `python3 cli.py cert --config-dir . --work-dir . --logs-dir . -e address@domain.com --contact contact@anotherdomain.com`
 
@@ -57,6 +78,22 @@ After this, the client will negotiate with [CASTLE Platform® ACME Server](https
 3. Copy the **entire** subject (with the `ACME: `part included) and paste it to the client terminal. 
 4. With the `<token>`you provided, the client will generate the **challenge response**, which has the form `-----BEGIN ACME RESPONSE-----...-----END ACME RESPONSE-----`.
 5. Copy the response and reply the ACME e-mail you received. Paste the challenge response in the **top of the message's body** and send it back to the ACME server.
+
+#### Using IMAP authenticator
+For obtaining an S/MIME certificate with IMAP authenticator. With this authenticator, all the procedure is performed automatically. IMAP and SMTP clients are created dynamically and the ACME challenge is answered without user intervention. 
+
+For example:
+
+`python3 cli.py cert --config-dir . --work-dir . --logs-dir . -e address@domain.com --contact contact@anotherdomain.com --imap --login imap_user --password imap_password --host imap.domain.com --ssl --smtp-method STARTTLS --smtp-port smtp_port --smtp-host smtp.domain.com`
+
+where `address@domain.com` is the e-mail address to certify and `contact@anotherdomain.com` is just the contact address for receiving notifications related with the account. Contact address is only used the first time. It can be ommitted in subsequent calls.
+
+This authenticator creates dynamic IMAP and SMTP clients for getting the token from the ACME e-mail, generate the authentication and reply to the ACME server with the ACME response. All the process is transparent and smooth to the user. 
+Notes:
+1. If no SMTP credentials are provided, IMAP credentials for SMTP client will be used.
+2. This authenticator works for "normal" e-mail accounts. It does not work with e-mail providers that have OAuth login (i.e., no GMail).
+3. The ACME message are catched from INBOX. It will not work if you have a misconfigured spam filtering or have pre-filtering rules.
+4. In case it does not work, use interactive authenticator.
 
 If everything goes well, the ACME server will grant your request and will issue a certificate. This certificate will be downloaded automatically and the client will put in a PKCS12 container. The client also will put the private key in the PKCS12 container. The PKCS12 container is a standard object, used for importing public and private keys to the Keychain. Often is used by e-mail clients for selecting the S/MIME certificate, used for signature and encryption. 
 
@@ -72,7 +109,8 @@ _(Reminder: private and public keys are generated automatically, you do not have
 * PKCS12 certificate storaging, with embedded private key.
 * Can revoke certificates.
 * Adjustable RSA key bit-length (2048 (default), 4096, ...).
-* Fully automated.
+* Fully automated or interactive.
+* IMAP and SMTP support for automated ACME replies. 
 * Supports an interactive text UI, or can be driven entirely from the command line.
 * Free and Open Source Software, made with Python.
 
@@ -83,7 +121,9 @@ Fortunately, Certbot supports the `--csr` parameter, which allows to provide an 
 
 The rest of the client is composed by three modules: 
 
-1. Authenticator plugin: it performs the authentication task, generating the ACME response by using the `<token>` provided in the subject.
+1. Authenticator plugin: it performs the authentication task, generating the ACME response by using the `<token>` provided in the subject. Two authenticators are provided:
+   1. Interactive: it requires user intervention by pasting the token, copying the ACME response and replying to the ACME server via e-mail.
+   2. IMAP: it creates dynamic IMAP and SMTP clients for ACME message interception, token catching and automatic response to ACME server. No user intervention is needed.
 2. Installation plugin: it generates the PKCS12 container with the private key and certificate.
 3. Challenges: it defines the EmailReply-00 challenge, described in the specification draft. 
 
