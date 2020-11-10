@@ -1,18 +1,51 @@
 from setuptools import setup
 from setuptools import find_packages
 
+version = '0.1.0.dev'
 
 setup(
     name='certbot-castle',
     packages=find_packages(),
-    install_requires=[
-        'certbot>=0.26.0',
-        'zope.interface',
+    version=version,
+    description='ACME E-mail S/MIME client for CASTLE Platform ACME',
+    license='GPLv3',
+    author="Pol Henarejos",
+    author_email='pol.henarejos@cttc.es',
+    python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*',
+    classifiers=[
+        'Development Status :: 5 - Production/Stable',
+        'Environment :: Plugins',
+        'Intended Audience :: System Administrators',
+        'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
+        'Operating System :: POSIX :: Linux',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Topic :: Communications :: Email',
+        'Topic :: Security',
+        'Topic :: System :: Installation/Setup',
+        'Topic :: System :: Networking',
+        'Topic :: System :: Systems Administration',
+        'Topic :: Utilities',
     ],
+    install_requires=[
+        'certbot>=1.1.0',
+        'acme>=0.29.0',
+        'setuptools',
+        'zope.interface',
+        'imapclient'
+    ],
+    include_package_data=True,
     entry_points={
         'certbot.plugins': [
             'castle-interactive = certbot_castle.plugins.interactive:Authenticator',
             'castle-installer = certbot_castle.plugins.installer:Installer',
+            'castle-imap = certbot_castle.plugins.imap:Authenticator',
         ],
     },
 )

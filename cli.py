@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import argparse, logging, re
+import argparse, logging, re, sys
 import zope.component
 from certbot._internal.plugins import disco as plugins_disco
 from certbot._internal.plugins import selection as plug_sel
@@ -85,7 +85,26 @@ def request_cert(args, config):
     cli_args = prepare_cli_args(args)
     cli_args.extend(['--csr',csr.file])
     cli_args.extend(['--server','https://acme.castle.cloud/acme/directory'])
-    cli_args.extend(['-a','castle-interactive'])
+    if (args.imap):
+        cli_args.extend(['-a','castle-imap'])
+        cli_args.extend(['--castle-imap-login',args.login])
+        cli_args.extend(['--castle-imap-password',args.password])
+        cli_args.extend(['--castle-imap-host',args.host])
+        if (args.port):
+            cli_args.extend(['--castle-imap-port',args.port])
+        if (args.ssl):
+            cli_args.extend(['--castle-imap-ssl'])
+        if (args.smtp_method):
+            cli_args.extend(['--castle-imap-smtp-method',args.smtp_method])
+        if (args.smtp_login):
+            cli_args.extend(['--castle-imap-smtp-login',args.smtp_login])
+        if (args.smtp_password):
+            cli_args.extend(['--castle-imap-smtp-login',args.smtp_password])
+        cli_args.extend(['--castle-imap-smtp-host',args.smtp_host])
+        if (args.smtp_port):
+            cli_args.extend(['--castle-imap-smtp-port',args.smtp_port])
+    else:
+        cli_args.extend(['-a','castle-interactive'])
     cli_args.extend(['-i','castle-installer'])
     cli_args.extend(['-m',args.contact])
     if (args.agree_tos):    
@@ -142,9 +161,22 @@ def parse_args():
     parser.add_argument('-c','--config-dir', help='Configuration directory')
     parser.add_argument('-w','--work-dir', help='Working directory')
     parser.add_argument('-l','--logs-dir', help='Logs directory')
-    parser.add_argument('--agree-tos', help='Logs directory')
+    parser.add_argument('--agree-tos', help='Accepts Terms of Service', action='store_true')
     parser.add_argument('--contact', help='Contact e-mail for important account notifications')
+    parser.add_argument('--imap', help='Uses IMAP API for automatic reply', action='store_true')
     parser.add_argument('command',choices=['cert','revoke','renew'])
+    
+    parser.add_argument('--login',help='IMAP login',required='--imap' in sys.argv)
+    parser.add_argument('--password',help='IMAP password',required='--imap' in sys.argv)
+    parser.add_argument('--host',help='IMAP server host',required='--imap' in sys.argv)
+    parser.add_argument('--port',help='IMAP server port')
+    parser.add_argument('--ssl',help='IMAP SSL',action='store_true')
+    
+    parser.add_argument('--smtp-method',help='SMTP method {STARTTLS,SSL,plain}',choices= ['STARTTLS','SSL','plain'])
+    parser.add_argument('--smtp-login',help='IMAP login')
+    parser.add_argument('--smtp-password',help='IMAP password')
+    parser.add_argument('--smtp-host',help='IMAP server host',required='--imap' in sys.argv)
+    parser.add_argument('--smtp-port',help='IMAP server port')
     args = parser.parse_args()
     process_args(args)
     
