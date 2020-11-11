@@ -1,7 +1,7 @@
 from setuptools import setup
 from setuptools import find_packages
 
-version = '0.1.0.dev'
+version = '0.3.0.dev'
 
 setup(
     name='certbot-castle',
