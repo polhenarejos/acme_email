@@ -84,7 +84,10 @@ def request_cert(args, config):
     ## Reparse for including --csr arguments
     cli_args = prepare_cli_args(args)
     cli_args.extend(['--csr',csr.file])
-    cli_args.extend(['--server','https://acme.castle.cloud/acme/directory'])
+    if (args.test):
+        cli_args.extend(['--server','https://acme-staging.castle.cloud/acme/directory'])
+    else:
+        cli_args.extend(['--server','https://acme.castle.cloud/acme/directory'])
     if (args.imap):
         cli_args.extend(['-a','castle-imap'])
         cli_args.extend(['--castle-imap-login',args.login])
@@ -163,7 +166,7 @@ def parse_args():
     parser.add_argument('-l','--logs-dir', help='Logs directory')
     parser.add_argument('--agree-tos', help='Accepts Terms of Service', action='store_true')
     parser.add_argument('--contact', help='Contact e-mail for important account notifications')
-    parser.add_argument('--imap', help='Uses IMAP API for automatic reply', action='store_true')
+    parser.add_argument('--imap', help='Uses IMAP Authenticator for automatic reply', action='store_true')
     parser.add_argument('command',choices=['cert','revoke','renew'])
     
     parser.add_argument('--login',help='IMAP login',required='--imap' in sys.argv)
