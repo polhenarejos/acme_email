@@ -111,6 +111,7 @@ _(Reminder: private and public keys are generated automatically, you do not have
 * Adjustable RSA key bit-length (2048 (default), 4096, ...).
 * Fully automated or interactive.
 * IMAP and SMTP support for automated ACME replies. 
+* Staging ACME server for test environments.
 * Supports an interactive text UI, or can be driven entirely from the command line.
 * Free and Open Source Software, made with Python.
 
