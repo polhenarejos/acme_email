@@ -22,6 +22,7 @@ class Installer(common.Plugin):
     def add_parser_arguments(cls, add):
         
         add('no-passphrase',help='Installs the PKCS12 without passphrase. Use with CAUTION: the PKCS12 file contains the private key',action='store_true')
+        add('passphrase',help='Passpharse to use for the PKCS12 generation. This passpharse will be used for private key encryption')
 
     def more_info(self):  # pylint: disable=missing-function-docstring
         return("This installer generates the PKCS12/PFX container once the certificate is issued. ")
@@ -51,15 +52,18 @@ class Installer(common.Plugin):
         notify = zope.component.getUtility(interfaces.IDisplay).notification
         passphrase = None
         if (not self.conf('no-passphrase')):
-            text = 'A passphrase is needed for protecting the PKCS12 container. '
-            notify(text,pause=False)
-            input = zope.component.getUtility(interfaces.IDisplay).input
-            code,pf = input('Enter passphrase: ', force_interactive=True)
-            code,vpf = input('Re-enter passphrase: ', force_interactive=True)
-            while (pf != vpf):
-                notify('Passphrases do not match.',pause=False)
-                code, vpf = input('Re-enter passphrase: ', force_interactive=True)
-            passphrase = pf.encode('ascii')
+            if (self.conf('passphrase')):
+                passphrase = self.conf('passphrase').encode('utf-8')
+            else:
+                text = 'A passphrase is needed for protecting the PKCS12 container. '
+                notify(text,pause=False)
+                input = zope.component.getUtility(interfaces.IDisplay).input
+                code,pf = input('Enter passphrase: ', force_interactive=True)
+                code,vpf = input('Re-enter passphrase: ', force_interactive=True)
+                while (pf != vpf):
+                    notify('Passphrases do not match.',pause=False)
+                    code, vpf = input('Re-enter passphrase: ', force_interactive=True)
+                passphrase = pf.encode('utf-8')
         pfxdata = pfx.export(passphrase=passphrase)
         path, _ = os.path.split(cert_path)
         pfx_f, pfx_filename = util.unique_file(os.path.join(path, 'cert-certbot.pfx'), 0o600, "wb")
