@@ -22,7 +22,7 @@ class Installer(common.Plugin):
     def add_parser_arguments(cls, add):
         
         add('no-passphrase',help='Installs the PKCS12 without passphrase. Use with CAUTION: the PKCS12 file contains the private key',action='store_true')
-        add('passphrase',help='Passpharse to use for the PKCS12 generation. This passpharse will be used for private key encryption')
+        add('passphrase',help='Passphrase to use for the PKCS12 generation. This passpharse will be used for private key encryption')
 
     def more_info(self):  # pylint: disable=missing-function-docstring
         return("This installer generates the PKCS12/PFX container once the certificate is issued. ")
