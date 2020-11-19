@@ -20,7 +20,8 @@ class Installer(common.Plugin):
     
     @classmethod
     def add_parser_arguments(cls, add):
-        pass  # No additional argument for the standalone plugin parser
+        
+        add('no-passphrase',help='Installs the PKCS12 without passphrase. Use with CAUTION: the PKCS12 file contains the private key',action='store_true')
 
     def more_info(self):  # pylint: disable=missing-function-docstring
         return("This installer generates the PKCS12/PFX container once the certificate is issued. ")
@@ -47,15 +48,18 @@ class Installer(common.Plugin):
         pfx.set_certificate(cert)
         pfx.set_ca_certificates([chain])
         pfx.set_friendlyname(domain.encode('utf-8'))
-        text = 'A passphrase is needed for protecting the PKCS12 container. '
         notify = zope.component.getUtility(interfaces.IDisplay).notification
-        notify(text,pause=False)
-        input = zope.component.getUtility(interfaces.IDisplay).input
-        code,pf = input('Enter passphrase: ', force_interactive=True)
-        code,vpf = input('Re-enter passphrase: ', force_interactive=True)
-        while (pf != vpf):
-            notify('Passphrases do not match.',pause=False)
-            code, vpf = input('Re-enter passphrase: ', force_interactive=True)
+        if (not self.conf('no-passphrase')):
+            text = 'A passphrase is needed for protecting the PKCS12 container. '
+            notify(text,pause=False)
+            input = zope.component.getUtility(interfaces.IDisplay).input
+            code,pf = input('Enter passphrase: ', force_interactive=True)
+            code,vpf = input('Re-enter passphrase: ', force_interactive=True)
+            while (pf != vpf):
+                notify('Passphrases do not match.',pause=False)
+                code, vpf = input('Re-enter passphrase: ', force_interactive=True)
+        else:
+            pf = ''
         pfxdata = pfx.export(pf.encode('ascii'))
         path, _ = os.path.split(cert_path)
         pfx_f, pfx_filename = util.unique_file(os.path.join(path, 'cert-certbot.pfx'), 0o600, "wb")

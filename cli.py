@@ -109,6 +109,8 @@ def request_cert(args, config):
     else:
         cli_args.extend(['-a','castle-interactive'])
     cli_args.extend(['-i','castle-installer'])
+    if (args.no_passphrase):
+        cli_args.extend(['--castle-installer-no-passphrase'])
     cli_args.extend(['-m',args.contact])
     if (args.agree_tos):    
         cli_args.extend(['--agree-tos'])
@@ -180,6 +182,8 @@ def parse_args():
     parser.add_argument('--smtp-password',help='SMTP password. If empty, IMAP password will be used')
     parser.add_argument('--smtp-host',help='SMTP server host',required='--imap' in sys.argv)
     parser.add_argument('--smtp-port',help='SMTP server port. If empty, it will be auto-detected')
+    
+    parser.add_argument('--no-passphrase',help='PKCS12 is stored without passphrase. Use with CAUTION: the PKCS12 contains the private key',action='store_true')
     args = parser.parse_args()
     process_args(args)
     
