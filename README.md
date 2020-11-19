@@ -18,7 +18,7 @@ ACME E-mail S/MIME client uses the Certbot framework for managing ACME protocols
 To use it:
 
     usage: cli.py [-h] -e EMAIL [-t] [--dry-run] [-n] [-c CONFIG_DIR] [-w WORK_DIR] [-l LOGS_DIR] [--agree-tos AGREE_TOS] [--contact CONTACT] [--imap] [--login LOGIN] [--password PASSWORD] [--host HOST] [--port PORT] [--ssl]
-              [--smtp-method {STARTTLS,SSL,plain}] [--smtp-login SMTP_LOGIN] [--smtp-password SMTP_PASSWORD] [--smtp-host SMTP_HOST] [--smtp-port SMTP_PORT]
+              [--smtp-method {STARTTLS,SSL,plain}] [--smtp-login SMTP_LOGIN] [--smtp-password SMTP_PASSWORD] [--smtp-host SMTP_HOST] [--smtp-port SMTP_PORT] [--no-passphrase] [--passphrase PASSPHRASE]
               {cert,revoke,renew}
 
     
@@ -59,7 +59,10 @@ To use it:
       --smtp-host SMTP_HOST
                             SMTP server host
       --smtp-port SMTP_PORT
-                             SMTP server port. If empty, it will be auto-detected
+                            SMTP server port. If empty, it will be auto-detected
+      --no-passphrase       PKCS12 is stored without passphrase. Use with CAUTION: the PKCS12 contains the private key
+      --passphrase PASSPHRASE
+                            Passphrase to use for the PKCS12 generation. This passpharse will be used for private key encryption
 	  
 Some of the parameters are shared by Certbot software, since it manages the protocol stack and data flow between the client and the ACME server. Sooner more parameters will be added.
 
