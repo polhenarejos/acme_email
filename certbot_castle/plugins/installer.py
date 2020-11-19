@@ -65,7 +65,7 @@ class Installer(common.Plugin):
         pfx_f, pfx_filename = util.unique_file(os.path.join(path, 'cert-certbot.pfx'), 0o600, "wb")
         with pfx_f:
             pfx_f.write(pfxdata)
-        notify('PKCS12 container generated at '+pfx_filename)
+        notify('PKCS12 container generated at '+pfx_filename,pause=False)
 
     def enhance(self, domain, enhancement, options=None):
         pass  # pragma: no cover
