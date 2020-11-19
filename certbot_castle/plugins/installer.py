@@ -49,6 +49,7 @@ class Installer(common.Plugin):
         pfx.set_ca_certificates([chain])
         pfx.set_friendlyname(domain.encode('utf-8'))
         notify = zope.component.getUtility(interfaces.IDisplay).notification
+        passphrase = None
         if (not self.conf('no-passphrase')):
             text = 'A passphrase is needed for protecting the PKCS12 container. '
             notify(text,pause=False)
@@ -58,9 +59,8 @@ class Installer(common.Plugin):
             while (pf != vpf):
                 notify('Passphrases do not match.',pause=False)
                 code, vpf = input('Re-enter passphrase: ', force_interactive=True)
-        else:
-            pf = ''
-        pfxdata = pfx.export(pf.encode('ascii'))
+            passphrase = pf.encode('ascii')
+        pfxdata = pfx.export(passphrase=passphrase)
         path, _ = os.path.split(cert_path)
         pfx_f, pfx_filename = util.unique_file(os.path.join(path, 'cert-certbot.pfx'), 0o600, "wb")
         with pfx_f:
