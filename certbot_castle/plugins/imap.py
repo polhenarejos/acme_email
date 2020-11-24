@@ -1,4 +1,4 @@
-import logging, time, datetime
+import logging
 
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s: %(message)s',
@@ -14,10 +14,9 @@ from certbot.plugins import common
 from certbot_castle import challenge
 
 import josepy as jose
-from imapclient import IMAPClient
 import imapclient
 from smtplib import SMTP, SMTP_SSL
-import ssl
+import ssl, email
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +48,7 @@ class Authenticator(common.Plugin):
                "It configures an IMAP and SMTP e-mail clients to receive and answer ACME challenges. ")
 
     def prepare(self):  # pylint: disable=missing-function-docstring
-        self.imap = IMAPClient(self.conf('host'), port=self.conf('port'), use_uid=False, ssl=True if self.conf('ssl') else False)
+        self.imap = imapclient.IMAPClient(self.conf('host'), port=self.conf('port'), use_uid=False, ssl=True if self.conf('ssl') else False)
         self.imap.login(self.conf('login'),self.conf('password'))
         self.imap.select_folder('INBOX')
         self.imap.idle()
@@ -96,12 +95,13 @@ class Authenticator(common.Plugin):
                 uid, state = msg
                 if state == b'EXISTS':
                     self.imap.idle_done()
-                    respo = self.imap.fetch(uid, 'ENVELOPE')
+                    respo = self.imap.fetch(uid, ['RFC822'])
                     for message_id, data in respo.items():
-                        if (b'ENVELOPE' in data):
-                            subject = data[b'ENVELOPE'].subject
-                            if (subject.startswith(b'ACME: ')):
-                                token64 = subject.split(b' ')[-1]
+                        if (b'RFC822' in data):
+                            msg = email.message_from_bytes(data[b'RFC822'])
+                            subject = msg['Subject']
+                            if (subject.startswith('ACME: ')):
+                                token64 = subject.split(' ')[-1]
                                 token1 = jose.b64.b64decode(token64)
 
                                 full_token = bytearray(achall.chall.token)
@@ -110,15 +110,14 @@ class Authenticator(common.Plugin):
                                 # We reconstruct the ChallengeBody
                                 challt = messages.ChallengeBody.from_json({ 'type': 'email-reply-00', 'token': jose.b64.b64encode(bytes(full_token)).decode('ascii'), 'url': achall.challb.uri, 'status': achall.challb.status.to_json() })
                                 response, validation = challt.response_and_validation(achall.account_key)
-                                if (data[b'ENVELOPE'].reply_to):
-                                    frm = data[b'ENVELOPE'].reply_to[0]
+                                if ('Reply-To' in msg):
+                                    to = msg['Reply-To']
                                 else:
-                                    frm = data[b'ENVELOPE'].sender[0]
-                                to = (frm.mailbox+b'@'+frm.host).decode('utf-8')
-                                me = (data[b'ENVELOPE'].to[0].mailbox+b'@'+data[b'ENVELOPE'].to[0].host).decode('utf-8')
+                                    to = msg['From']
+                                me = msg['To']
                                 message = 'From: {}\n'.format(me)
                                 message += 'To: {}\n'.format(to)
-                                message += 'Subject: Re: {}\n\n'.format(subject.decode('utf-8'))
+                                message += 'Subject: Re: {}\n\n'.format(subject)
                                 message += '-----BEGIN ACME RESPONSE-----\n{}\n-----END ACME RESPONSE-----\n'.format(validation)
                                 self.smtp.sendmail(me,to,message)
                                 
