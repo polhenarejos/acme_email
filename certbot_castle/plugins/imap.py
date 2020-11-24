@@ -101,6 +101,10 @@ class Authenticator(common.Plugin):
                     for message_id, data in respo.items():
                         if (b'RFC822' in data):
                             msg = email.message_from_bytes(data[b'RFC822'])
+                            if (email.utils.parseaddr(msg['From'])[1] != achall.challb.chall.from_addr):
+                                continue
+                            if (msg['To'] != achall.domain):
+                                continue
                             subject = msg['Subject']
                             dkim = msg.get('DKIM-Signature',None)
                             if (dkim):
@@ -127,7 +131,7 @@ class Authenticator(common.Plugin):
                                 full_token = token1+achall.chall.token
 
                                 # We reconstruct the ChallengeBody
-                                challt = messages.ChallengeBody.from_json({ 'type': 'email-reply-00', 'token': jose.b64.b64encode(bytes(full_token)).decode('ascii'), 'url': achall.challb.uri, 'status': achall.challb.status.to_json() })
+                                challt = messages.ChallengeBody.from_json({ 'type': 'email-reply-00', 'token': jose.b64.b64encode(bytes(full_token)).decode('ascii'), 'url': achall.challb.uri, 'status': achall.challb.status.to_json(), 'from': achall.challb.chall.from_addr })
                                 response, validation = challt.response_and_validation(achall.account_key)
                                 if ('Reply-To' in msg):
                                     to = msg['Reply-To']
