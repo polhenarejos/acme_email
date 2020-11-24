@@ -140,6 +140,7 @@ class Authenticator(common.Plugin):
                                 me = msg['To']
                                 message = 'From: {}\n'.format(me)
                                 message += 'To: {}\n'.format(to)
+                                message += 'In-Reply-To: {}\n'.format(msg['Message-ID'])
                                 message += 'Subject: Re: {}\n\n'.format(subject)
                                 message += '-----BEGIN ACME RESPONSE-----\n{}\n-----END ACME RESPONSE-----\n'.format(validation)
                                 self.smtp.sendmail(me,to,message)
