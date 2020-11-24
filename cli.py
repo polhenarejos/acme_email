@@ -53,10 +53,11 @@ def make_csr(pkey_pem, emails):
 def prepare_csr(emails, config, key=None):
     if config.dry_run:
         key = key or util.Key(file=None, pem=crypto_util.make_key(config.rsa_key_size))
-        csr = util.CSR(file=None, form="pem", data=make_csr(key.pem, emails))
+        ## CSR is always used, as it MUST send "email" identifier (dns by default)
+        #csr = util.CSR(file=None, form="pem", data=make_csr(key.pem, emails))
     else:
         key = key or crypto_util.init_save_key(config.rsa_key_size, config.key_dir)
-        csr = init_save_csr(key, emails, config)
+    csr = init_save_csr(key, emails, config)
     return key,csr
 
 def prepare_cli_args(args):
@@ -65,10 +66,12 @@ def prepare_cli_args(args):
     if (args.config_dir): cli_args.extend(['--config-dir',args.config_dir])
     if (args.work_dir): cli_args.extend(['--work-dir',args.work_dir])
     if (args.logs_dir): cli_args.extend(['--logs-dir',args.logs_dir])
-    for email in args.email:
-        cli_args.extend(['-d',email])
     if (command == 'cert'): cli_args.extend(['certonly'])
     else: cli_args.extend([command])
+    if (args.dry_run):    
+        cli_args.extend(['--dry-run'])
+    for email in args.email:
+        cli_args.extend(['-d',email])
     return cli_args
 
 def prepare_config(cli_args):    
@@ -118,8 +121,6 @@ def request_cert(args, config):
         cli_args.extend(['--agree-tos'])
     if (args.non_interactive):    
         cli_args.extend(['-n'])
-    if (args.dry_run):    
-        cli_args.extend(['--dry-run'])
     config,plugins = prepare_config(cli_args)
     config.key_path = key.file
     try:
@@ -136,6 +137,8 @@ def request_cert(args, config):
     certbot_main._report_new_cert(config, cert_path, fullchain_path)
     if (not config.dry_run):
         certbot_main._install_cert(config, le_client, args.email)
+    else:
+        util.safely_remove(csr.file)
     
 def main(args):
     ## Prepare storage system
