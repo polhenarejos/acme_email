@@ -9,6 +9,7 @@ import zope.interface
 
 from acme import messages
 from certbot import interfaces
+from certbot import errors
 from certbot.plugins import common
 
 from certbot_castle import challenge
@@ -88,7 +89,8 @@ class Authenticator(common.Plugin):
 
         text = 'A challenge request for S/MIME certificate has been sent. In few minutes, ACME server will send a challenge e-mail to requested recipient. You do not need to take ANY action, as it will be replied automatically.'
         notify(text,pause=False)
-        sent = False
+        stop = False
+        dkim_h = ['from','auto-submitted','date','message-id','subject','to']
         for i in range(30):
             idle = self.imap.idle_check(timeout=10)
             for msg in idle:
@@ -100,7 +102,24 @@ class Authenticator(common.Plugin):
                         if (b'RFC822' in data):
                             msg = email.message_from_bytes(data[b'RFC822'])
                             subject = msg['Subject']
+                            dkim = msg.get('DKIM-Signature',None)
+                            if (dkim):
+                                if ('Authentication-Results' not in msg):
+                                    raise errors.AuthorizationError('DKIM signature is used but your email provider does not insert "Authentication-Results" header')
+                                if ('dkim=pass' not in msg['Authentication-Results'].lower()):
+                                    raise errors.AuthorizationError('DKIM signature is used but it does not pass the verification')
+                                dkim_tags = {}
+                                for d in dkim.split(';'):
+                                    t = d.strip().split('=')
+                                    dkim_tags[t[0]] = t[1]
+                                if ('h' not in dkim_tags):
+                                    raise errors.AuthorizationError('Bad DKIM signature header')
+                                if not set(dkim_h).issubset(set(dkim_tags['h'].split(':'))):
+                                    raise errors.AuthorizationError('Missing h fields in DKIM-Signature header')
+                                if (dkim_tags['d'].lower() != email.utils.parseaddr(msg['From'])[1].split('@')[1]):
+                                    raise errors.AuthorizationError('From\s email domain does not match DKIM d tag')
                             if (subject.startswith('ACME: ')):
+                                
                                 token64 = subject.split(' ')[-1]
                                 token1 = jose.b64.b64decode(token64)
 
@@ -124,8 +143,8 @@ class Authenticator(common.Plugin):
                                 self.imap.add_flags(message_id,imapclient.SEEN)
                                 self.imap.add_flags(message_id,imapclient.DELETED)
                                 notify('The ACME response has been sent successfully!',pause=False)
-                                sent = True
-            if (sent):
+                                stop = True
+            if (stop):
                 break
         return response
 
