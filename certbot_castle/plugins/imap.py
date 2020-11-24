@@ -18,6 +18,9 @@ import josepy as jose
 import imapclient
 from smtplib import SMTP, SMTP_SSL
 import ssl, email
+from OpenSSL import crypto
+from email.message import EmailMessage
+from email import policy
 
 logger = logging.getLogger(__name__)
 
@@ -100,13 +103,14 @@ class Authenticator(common.Plugin):
                     respo = self.imap.fetch(uid, ['RFC822'])
                     for message_id, data in respo.items():
                         if (b'RFC822' in data):
-                            msg = email.message_from_bytes(data[b'RFC822'])
+                            msg = email.message_from_bytes(data[b'RFC822'],_class=EmailMessage,policy=policy.default)
                             if (email.utils.parseaddr(msg['From'])[1] != achall.challb.chall.from_addr):
                                 continue
                             if (msg['To'] != achall.domain):
                                 continue
                             subject = msg['Subject']
                             dkim = msg.get('DKIM-Signature',None)
+                            from_addr = email.utils.parseaddr(msg['From'])[1].split('@')[1]
                             if (dkim):
                                 if ('Authentication-Results' not in msg):
                                     raise errors.AuthorizationError('DKIM signature is used but your email provider does not insert "Authentication-Results" header')
@@ -120,8 +124,37 @@ class Authenticator(common.Plugin):
                                     raise errors.AuthorizationError('Bad DKIM signature header')
                                 if not set(dkim_h).issubset(set(dkim_tags['h'].split(':'))):
                                     raise errors.AuthorizationError('Missing h fields in DKIM-Signature header')
-                                if (dkim_tags['d'].lower() != email.utils.parseaddr(msg['From'])[1].split('@')[1]):
+                                if (dkim_tags['d'].lower() != from_addr):
                                     raise errors.AuthorizationError('From\s email domain does not match DKIM d tag')
+                            elif (msg.get_content_subtype() == 'signed'):
+                                subjaltnames = None
+                                for att in msg.iter_attachments():
+                                    if (att.get_content_type() == 'application/pkcs7-signature'):
+                                        pkcs7 = crypto.load_pkcs7_data(crypto.FILETYPE_ASN1, att.get_content())
+                                        certs = crypto._ffi.NULL
+                                        if pkcs7.type_is_signed():
+                                            certs = pkcs7._pkcs7.d.sign.cert
+                                        elif pkcs7.type_is_signedAndEnveloped():
+                                            certs = pkcs7._pkcs7.d.signed_and_enveloped.cert
+                                        for i in range(crypto._lib.sk_X509_num(certs)):
+                                            cert = crypto.X509.__new__(crypto.X509)
+                                            cert._x509 = crypto._lib.X509_dup(crypto._lib.sk_X509_value(certs, i))
+
+                                            leaf = False
+                                            tsubj = None
+                                            for i in range(cert.get_extension_count()):
+                                                ex = cert.get_extension(i)
+                                                if (ex.get_critical() and ex.get_short_name() == b'basicConstraints' and ex.get_data() == b'0\x00'): #leaf cert
+                                                    leaf = True
+                                                elif (ex.get_short_name() == b'subjectAltName'):
+                                                    tsubj = str(ex)
+                                                #print('{}: {} [{}] {{Critical:{}}}'.format(ex.get_short_name(),ex.get_data(),str(ex),ex.get_critical()))
+                                            if (leaf and tsubj):
+                                                subjaltnames = [t.split(':')[1] for t in tsubj.split(',')]
+                                if (not subjaltnames):
+                                    raise errors.AuthorizationError('S/MIME signature is used but no subjAltNames were found in its certificate')
+                                if (from_addr not in subjaltnames):
+                                    raise errors.AuthorizationError('S/MIME signature is used but no From is not in subjAltNames')
                             if (subject.startswith('ACME: ')):
                                 
                                 token64 = subject.split(' ')[-1]
