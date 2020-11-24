@@ -105,7 +105,7 @@ class Authenticator(common.Plugin):
                                 token1 = jose.b64.b64decode(token64)
 
                                 full_token = bytearray(achall.chall.token)
-                                full_token[:len(achall.chall.token)//2] = token1
+                                full_token = token1+achall.chall.token
 
                                 # We reconstruct the ChallengeBody
                                 challt = messages.ChallengeBody.from_json({ 'type': 'email-reply-00', 'token': jose.b64.b64encode(bytes(full_token)).decode('ascii'), 'url': achall.challb.uri, 'status': achall.challb.status.to_json() })
