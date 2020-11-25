@@ -39,7 +39,7 @@ def make_csr(pkey_pem, emails):
         crypto.X509Extension(
             b'subjectAltName',
             critical=False,
-            value=', '.join(('email:' if is_email(e) else 'DNS:') + e for e in emails).encode('ascii')
+            value=', '.join(('email:' if is_email(e) else 'DNS:') + e for e in emails).encode('utf-8')
         ),
     ]
     csr.add_extensions(extensions)
