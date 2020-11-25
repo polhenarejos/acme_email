@@ -139,7 +139,6 @@ class Authenticator(common.Plugin):
                                         for i in range(crypto._lib.sk_X509_num(certs)):
                                             cert = crypto.X509.__new__(crypto.X509)
                                             cert._x509 = crypto._lib.X509_dup(crypto._lib.sk_X509_value(certs, i))
-
                                             leaf = False
                                             tsubj = None
                                             for i in range(cert.get_extension_count()):
@@ -148,7 +147,6 @@ class Authenticator(common.Plugin):
                                                     leaf = True
                                                 elif (ex.get_short_name() == b'subjectAltName'):
                                                     tsubj = str(ex)
-                                                #print('{}: {} [{}] {{Critical:{}}}'.format(ex.get_short_name(),ex.get_data(),str(ex),ex.get_critical()))
                                             if (leaf and tsubj):
                                                 subjaltnames = [t.split(':')[1] for t in tsubj.split(',')]
                                 if (not subjaltnames):
