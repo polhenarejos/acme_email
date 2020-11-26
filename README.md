@@ -19,6 +19,7 @@ To use it:
 
     usage: cli.py [-h] -e EMAIL [-t] [--dry-run] [-n] [-c CONFIG_DIR] [-w WORK_DIR] [-l LOGS_DIR] [--agree-tos AGREE_TOS] [--contact CONTACT] [--imap] [--login LOGIN] [--password PASSWORD] [--host HOST] [--port PORT] [--ssl]
               [--smtp-method {STARTTLS,SSL,plain}] [--smtp-login SMTP_LOGIN] [--smtp-password SMTP_PASSWORD] [--smtp-host SMTP_HOST] [--smtp-port SMTP_PORT] [--no-passphrase] [--passphrase PASSPHRASE]
+              [--usage {digitalSignature,contentCommitment,keyEncipherment,keyAgreement}]
               {cert,revoke,renew}
 
     
@@ -63,24 +64,27 @@ To use it:
       --no-passphrase       PKCS12 is stored without passphrase. Use with CAUTION: the PKCS12 contains the private key
       --passphrase PASSPHRASE
                             Passphrase to use for the PKCS12 generation. This passpharse will be used for private key encryption
+      --usage {digitalSignature,contentCommitment,keyEncipherment,keyAgreement}
+                            Key usage for certificate. Multiple usages can be specified
 	  
 Some of the parameters are shared by Certbot software, since it manages the protocol stack and data flow between the client and the ACME server. Sooner more parameters will be added.
 
+### Key Usage
+The ACME Email protocol defines the possibility to specify the key usage of the issued certificate. Currently, four (4) usages are allowed:
+* For signing only:
+  * `digitalSignature`: this usage is highly recommended, as it enables the digital signature in S/MIME certificates for signing.
+  * `contentCommitment` (formerly `nonRepudation`): it enables non-repudiation services to guarantee the authenticity of signed data. 
+* For encryption only:
+  * `keyEncipherment`: the public key can be used to encrypt a symmetric key, which is transferred to the target. 
+  * `keyAgreement`: the certificate may use a key agreement protocol to establish a symmetric key.
+
+The client can specify multiple usages in a single certificate vía `--usage` flag. Use multiple `--usage` to specify multiple usages (for example, `--usage digitalSignature --usage keyEncipherment`). 
+
+If no `--usage` flag is specified, the ACME server will issue a certificate with `digitalSignature`, `contentCommitment` and `keyEncipherment` by default.
+
+No other extension are allowed in the CSR. Any CSR with extensions different from `keyUsage` and `subjectAltNames` will be rejected.
+
 ### Example
-
-#### Using interactive authenticator
-For obtaining an S/MIME certificate with interactive authenticator. 
-
-`python3 cli.py cert --config-dir . --work-dir . --logs-dir . -e address@domain.com --contact contact@anotherdomain.com`
-
-where `address@domain.com` is the e-mail address to certify and `contact@anotherdomain.com` is just the contact address for receiving notifications related with the account. Contact address is only used the first time. It can be ommitted in subsequent calls.
-
-After this, the client will negotiate with [CASTLE Platform® ACME Server](https://acme.castle.cloud/ "CASTLE Platform® ACME Server") for obtaining an S/MIME certificate. 
-1. An e-mail will be send to `address@domain.com` with a challenge subject. The client will wait for the token you will receive in the `address@domain.com`.
-2. The subject has the form of `ACME: <token>`. The `<token>` part is needed for passing the challenge.
-3. Copy the **entire** subject (with the `ACME: `part included) and paste it to the client terminal. 
-4. With the `<token>`you provided, the client will generate the **challenge response**, which has the form `-----BEGIN ACME RESPONSE-----...-----END ACME RESPONSE-----`.
-5. Copy the response and reply the ACME e-mail you received. Paste the challenge response in the **top of the message's body** and send it back to the ACME server.
 
 #### Using IMAP authenticator
 For obtaining an S/MIME certificate with IMAP authenticator. With this authenticator, all the procedure is performed automatically. IMAP and SMTP clients are created dynamically and the ACME challenge is answered without user intervention. 
@@ -100,7 +104,24 @@ Notes:
 
 If everything goes well, the ACME server will grant your request and will issue a certificate. This certificate will be downloaded automatically and the client will put in a PKCS12 container. The client also will put the private key in the PKCS12 container. The PKCS12 container is a standard object, used for importing public and private keys to the Keychain. Often is used by e-mail clients for selecting the S/MIME certificate, used for signature and encryption. 
 
-You can optionally protect the PKCS12 container with a passphrase. Since it contains your private key, **it is highly recommended** to protect the PKCS12 container with a strong passphrase. The client will prompt you for a passphrase before generating the PKCS12. _This step cannot be automatized, as it requires your attention._
+You can optionally protect the PKCS12 container with a passphrase. Since it contains your private key, **it is highly recommended** to protect the PKCS12 container with a strong passphrase. The client will prompt you for a passphrase before generating the PKCS12, if no `--pasphrase` is specified. If you aim at authomatizing the whole process, use the flag `--passphrase <the_passphrase>` to specify the secret passphrase.
+
+#### Using interactive authenticator
+**IMPORTANT: This method is not recommended, as it does not performs any authentication check (such as DKIM or S/MIME). These checks MUST be carried out by the user manually.**
+
+For obtaining an S/MIME certificate with interactive authenticator. 
+
+`python3 cli.py cert --config-dir . --work-dir . --logs-dir . -e address@domain.com --contact contact@anotherdomain.com --usage digitalSignature --usage keyEncipherment`
+
+where `address@domain.com` is the e-mail address to certify and `contact@anotherdomain.com` is just the contact address for receiving notifications related with the account. Contact address is only used the first time. It can be ommitted in subsequent calls.
+
+After this, the client will negotiate with [CASTLE Platform® ACME Server](https://acme.castle.cloud/ "CASTLE Platform® ACME Server") for obtaining an S/MIME certificate. 
+1. An e-mail will be send to `address@domain.com` with a challenge subject. The client will wait for the token you will receive in the `address@domain.com`.
+2. The subject has the form of `ACME: <token>`. The `<token>` part is needed for passing the challenge.
+3. Copy the **entire** subject (with the `ACME: `part included) and paste it to the client terminal. 
+4. With the `<token>`you provided, the client will generate the **challenge response**, which has the form `-----BEGIN ACME RESPONSE-----...-----END ACME RESPONSE-----`.
+5. Copy the response and reply the ACME e-mail you received. Paste the challenge response in the **top of the message's body** and send it back to the ACME server.
+
 
 **IMPORTANT: Remind that your private key is not transmitted to ACME server, nor flows through internet at any time. The CSR contains your public key linked to your private key and the ACME server generates the public certificate based on it, without the need of the private key.**
 
@@ -112,8 +133,10 @@ _(Reminder: private and public keys are generated automatically, you do not have
 * PKCS12 certificate storaging, with embedded private key.
 * Can revoke certificates.
 * Adjustable RSA key bit-length (2048 (default), 4096, ...).
+* Customizable key usage for the certificate: digitalSignature, keyEncipherment, contentCommitment and/or keyAgreement can be specified.
 * Fully automated or interactive.
-* IMAP and SMTP support for automated ACME replies. 
+* IMAP and SMTP support for automated ACME replies.
+* DKIM and S/MIME checks for message authentication.
 * Staging ACME server for test environments.
 * Supports an interactive text UI, or can be driven entirely from the command line.
 * Free and Open Source Software, made with Python.
@@ -126,15 +149,15 @@ Fortunately, Certbot supports the `--csr` parameter, which allows to provide an 
 The rest of the client is composed by three modules: 
 
 1. Authenticator plugin: it performs the authentication task, generating the ACME response by using the `<token>` provided in the subject. Two authenticators are provided:
-   1. Interactive: it requires user intervention by pasting the token, copying the ACME response and replying to the ACME server via e-mail.
-   2. IMAP: it creates dynamic IMAP and SMTP clients for ACME message interception, token catching and automatic response to ACME server. No user intervention is needed.
+   1. IMAP: it creates dynamic IMAP and SMTP clients for ACME message interception, token catching and automatic response to ACME server. No user intervention is needed.
+   2. Interactive: it requires user intervention by pasting the token, copying the ACME response and replying to the ACME server via e-mail. **This method is not recommended, as it does not performs any authentication check (such as DKIM or S/MIME). These checks MUST be carried out by the user manually.**
 2. Installation plugin: it generates the PKCS12 container with the private key and certificate.
 3. Challenges: it defines the EmailReply-00 challenge, described in the specification draft. 
 
-Thanks to this, we are able to write on my own code and leave the Certbot code unmodified. Of course, if in a future Certbot supports "email" Identifier Type and ACME S/MIME challenges, all my words will be useless. In the meantime, you can use it.
+Thanks to this, we are able to write on our own code and leave the Certbot code unmodified. Of course, if in a future Certbot supports "email" Identifier Type and ACME S/MIME challenges, all this repository will be useless. In the meantime, you can use it.
 
 ## License
-All the code in this repository is under GPLv3 license
+All the code in this repository is under GPLv3 license.
 
 ## About 
 ACME E-mail S/MIME Client and ACME E-mail S/MIME Server are part of the [CASTLE Platform®](https://www.castle.cloud/ "CASTLE Platform®"), a platform of the [Centre Tecnològic de Telecomunicacions de Catalunya (CTTC)](https://www.cttc.es "CTTC"). 
