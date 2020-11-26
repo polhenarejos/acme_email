@@ -136,15 +136,17 @@ class Authenticator(common.Plugin):
                                     if (att.get_content_type() == 'application/pkcs7-signature'):
                                         certs = pkcs7.load_der_pkcs7_certificates(att.get_content())
                                         for cert in certs:
-                                            leaf = False
-                                            tsubj = None
-                                            for ex in cert.extensions:
-                                                if (ex.critical and ex.oid == ExtensionOID.BASIC_CONSTRAINTS and not ex.value.ca): #leaf cert
-                                                    leaf = True
-                                                elif (ex.oid == ExtensionOID.SUBJECT_ALTERNATIVE_NAME):
-                                                    tsubj = ex.value.get_values_for_type(x509.RFC822Name)
-                                            if (leaf and tsubj):
-                                                subjaltnames = tsubj
+                                            try:
+                                                ex = cert.extensions.get_extension_for_oid(ExtensionOID.BASIC_CONSTRAINTS)
+                                            except x509.ExtensionNotFound:
+                                                continue
+                                            if (not ex.value.ca):
+                                                try:
+                                                    ex = cert.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME)
+                                                except x509.ExtensionNotFound:
+                                                    continue
+                                                subjaltnames = ex.value.get_values_for_type(x509.RFC822Name)
+                                                break
                                 if (not subjaltnames):
                                     raise errors.AuthorizationError('S/MIME signature is used but no subjAltNames were found in its certificate')
                                 if (from_addr not in subjaltnames):
