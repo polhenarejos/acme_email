@@ -2,8 +2,12 @@ from certbot import util
 from certbot import crypto_util
 from certbot.compat import os
 
-from OpenSSL import crypto
 import re, logging
+
+from cryptography.hazmat.primitives import serialization
+from cryptography import x509
+from cryptography.x509.oid import NameOID
+from cryptography.hazmat.primitives import hashes
 
 logger = logging.getLogger(__name__)   
 
@@ -12,21 +16,18 @@ def is_email(domain_name):
     return re.fullmatch(REGEX, domain_name)
 
 def make(pkey_pem, emails):
-    private_key = crypto.load_privatekey(crypto.FILETYPE_PEM, pkey_pem)
-    csr = crypto.X509Req()
-    extensions = [
-        crypto.X509Extension(
-            b'subjectAltName',
+    private_key = serialization.load_pem_private_key(pkey_pem, password=None)
+    csr = x509.CertificateSigningRequestBuilder().subject_name(
+        x509.Name([
+            x509.NameAttribute(NameOID.COMMON_NAME, emails[0]),
+        ])
+        ).add_extension(
+            x509.SubjectAlternativeName([
+                x509.RFC822Name(e) for e in emails
+            ]),
             critical=False,
-            value=', '.join(('email:' if is_email(e) else 'DNS:') + e for e in emails).encode('utf-8')
-        ),
-    ]
-    csr.add_extensions(extensions)
-    csr.set_pubkey(private_key)
-    csr.set_version(2)
-    csr.get_subject().__setattr__('commonName', emails[0])
-    csr.sign(private_key, 'sha256')
-    csr_pem = crypto.dump_certificate_request(crypto.FILETYPE_PEM, csr)
+        ).sign(private_key, hashes.SHA256())
+    csr_pem = csr.public_bytes(serialization.Encoding.PEM)
     return csr_pem
 
 def init_save_csr(privkey, email, config):

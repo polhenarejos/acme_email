@@ -18,7 +18,11 @@ import josepy as jose
 import imapclient
 from smtplib import SMTP, SMTP_SSL
 import ssl, email
-from OpenSSL import crypto
+
+from cryptography.hazmat.primitives.serialization import pkcs7
+from cryptography.x509.oid import ExtensionOID
+from cryptography import x509
+
 from email.message import EmailMessage
 from email import policy
 
@@ -130,25 +134,17 @@ class Authenticator(common.Plugin):
                                 subjaltnames = None
                                 for att in msg.iter_attachments():
                                     if (att.get_content_type() == 'application/pkcs7-signature'):
-                                        pkcs7 = crypto.load_pkcs7_data(crypto.FILETYPE_ASN1, att.get_content())
-                                        certs = crypto._ffi.NULL
-                                        if pkcs7.type_is_signed():
-                                            certs = pkcs7._pkcs7.d.sign.cert
-                                        elif pkcs7.type_is_signedAndEnveloped():
-                                            certs = pkcs7._pkcs7.d.signed_and_enveloped.cert
-                                        for i in range(crypto._lib.sk_X509_num(certs)):
-                                            cert = crypto.X509.__new__(crypto.X509)
-                                            cert._x509 = crypto._lib.X509_dup(crypto._lib.sk_X509_value(certs, i))
+                                        certs = pkcs7.load_der_pkcs7_certificates(att.get_content())
+                                        for cert in certs:
                                             leaf = False
                                             tsubj = None
-                                            for i in range(cert.get_extension_count()):
-                                                ex = cert.get_extension(i)
-                                                if (ex.get_critical() and ex.get_short_name() == b'basicConstraints' and ex.get_data() == b'0\x00'): #leaf cert
+                                            for ex in cert.extensions:
+                                                if (ex.critical and ex.oid == ExtensionOID.BASIC_CONSTRAINTS and not ex.value.ca): #leaf cert
                                                     leaf = True
-                                                elif (ex.get_short_name() == b'subjectAltName'):
-                                                    tsubj = str(ex)
+                                                elif (ex.oid == ExtensionOID.SUBJECT_ALTERNATIVE_NAME):
+                                                    tsubj = ex.value.get_values_for_type(x509.RFC822Name)
                                             if (leaf and tsubj):
-                                                subjaltnames = [t.split(':')[1] for t in tsubj.split(',')]
+                                                subjaltnames = tsubj
                                 if (not subjaltnames):
                                     raise errors.AuthorizationError('S/MIME signature is used but no subjAltNames were found in its certificate')
                                 if (from_addr not in subjaltnames):

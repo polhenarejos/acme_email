@@ -8,7 +8,9 @@ from certbot import errors
 from certbot.plugins import common
 from certbot.compat import os
 
-from OpenSSL import crypto
+from cryptography import x509
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.serialization import pkcs12
 
 logger = logging.getLogger(__name__)
 
@@ -39,16 +41,11 @@ class Installer(common.Plugin):
             raise errors.PluginError("CASTLE Installer plugin requires --fullchain-path to generate a PKCS12 container.")
         logger.info("Generating PKCS12 container")
         logger.debug('Loading cert ')
-        cert = crypto.load_certificate(crypto.FILETYPE_PEM, open(cert_path,'rb').read())
+        cert = x509.load_pem_x509_certificate(open(cert_path,'rb').read())
         logger.debug('Loading key ')
-        privkey = crypto.load_privatekey(crypto.FILETYPE_PEM, open(key_path,'rb').read())
+        privkey = serialization.load_pem_private_key(open(key_path,'rb').read(), password=None)
         logger.debug('Loading chain ')
-        chain = crypto.load_certificate(crypto.FILETYPE_PEM, open(fullchain_path,'rb').read())
-        pfx = crypto.PKCS12()
-        pfx.set_privatekey(privkey)
-        pfx.set_certificate(cert)
-        pfx.set_ca_certificates([chain])
-        pfx.set_friendlyname(domain.encode('utf-8'))
+        chain = x509.load_pem_x509_certificate(open(fullchain_path,'rb').read())
         notify = zope.component.getUtility(interfaces.IDisplay).notification
         passphrase = None
         if (not self.conf('no-passphrase')):
@@ -64,7 +61,7 @@ class Installer(common.Plugin):
                     notify('Passphrases do not match.',pause=False)
                     code, vpf = input('Re-enter passphrase: ', force_interactive=True)
                 passphrase = pf.encode('utf-8')
-        pfxdata = pfx.export(passphrase=passphrase)
+        pfxdata = pkcs12.serialize_key_and_certificates(name=b'patata', key=privkey, cert=cert, cas=[chain], encryption_algorithm=serialization.BestAvailableEncryption(passphrase))
         path, _ = os.path.split(cert_path)
         pfx_f, pfx_filename = util.unique_file(os.path.join(path, 'cert-certbot.pfx'), 0o600, "wb")
         with pfx_f:
