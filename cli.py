@@ -38,7 +38,7 @@ def prepare_config(cli_args):
     return config,plugins
 
 def request_cert(args, config):
-    key, csr = csr_util.prepare(args.email, config)
+    key, csr = csr_util.prepare(args.email, config, usage=args.usage)
     #certbot certonly --config-dir . --work-dir . --logs-dir . --server https://acme.castle.cloud/acme/directory --csr csr/test.pem -a castle-interactive -d trocotronic@redyc.com
     ## Reparse for including --csr arguments
     cli_args = prepare_cli_args(args)
@@ -147,6 +147,8 @@ def parse_args():
     
     parser.add_argument('--no-passphrase',help='PKCS12 is stored without passphrase. Use with CAUTION: the PKCS12 contains the private key',action='store_true')
     parser.add_argument('--passphrase',help='Passphrase to use for the PKCS12 generation. This passpharse will be used for private key encryption')
+    
+    parser.add_argument('--usage', help='Key usage', choices=['digitalSignature','contentCommitment','keyEncipherment','keyAgreement'], action='append')
 
     args = parser.parse_args()
     process_args(args)
