@@ -155,8 +155,6 @@ class Authenticator(common.Plugin):
                                 
                                 token64 = subject.split(' ')[-1]
                                 token1 = jose.b64.b64decode(token64)
-
-                                full_token = bytearray(achall.chall.token)
                                 full_token = token1+achall.chall.token
 
                                 # We reconstruct the ChallengeBody
