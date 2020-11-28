@@ -52,12 +52,10 @@ class Authenticator(common.Plugin):
         code,subject = input('Subject: ', force_interactive=True)
         token64 = subject.split(' ')[-1]
         token1 = jose.b64.b64decode(token64)
-        
-        full_token = bytearray(achall.chall.token)
-        full_token[:len(achall.chall.token)//2] = token1
+        full_token = token1+achall.chall.token
     
         # We reconstruct the ChallengeBody
-        challt = messages.ChallengeBody.from_json({ 'type': 'email-reply-00', 'token': jose.b64.b64encode(bytes(full_token)).decode('ascii'), 'url': achall.challb.uri, 'status': achall.challb.status.to_json() })
+        challt = messages.ChallengeBody.from_json({ 'type': 'email-reply-00', 'token': jose.b64.b64encode(bytes(full_token)).decode('ascii'), 'url': achall.challb.uri, 'status': achall.challb.status.to_json(), 'from': achall.challb.chall.from_addr })
         response, validation = challt.response_and_validation(achall.account_key)
         notify('A challenge response has been generated. Please, copy the following text, reply the e-mail you have received from ACME server and paste this text in the TOP of the message\'s body: ',pause=False)
         print('\n-----BEGIN ACME RESPONSE-----\n'
