@@ -114,7 +114,7 @@ class Authenticator(common.Plugin):
                                 continue
                             subject = msg['Subject']
                             dkim = msg.get('DKIM-Signature',None)
-                            from_addr = email.utils.parseaddr(msg['From'])[1].split('@')[1]
+                            from_addr = email.utils.parseaddr(msg['From'])[1]
                             if (dkim):
                                 if ('Authentication-Results' not in msg):
                                     raise errors.AuthorizationError('DKIM signature is used but your email provider does not insert "Authentication-Results" header')
@@ -128,8 +128,8 @@ class Authenticator(common.Plugin):
                                     raise errors.AuthorizationError('Bad DKIM signature header')
                                 if not set(dkim_h).issubset(set(dkim_tags['h'].split(':'))):
                                     raise errors.AuthorizationError('Missing h fields in DKIM-Signature header')
-                                if (dkim_tags['d'].lower() != from_addr):
-                                    raise errors.AuthorizationError('From\s email domain does not match DKIM d tag')
+                                if (dkim_tags['d'].lower() != from_addr.split('@')[1]):
+                                    raise errors.AuthorizationError('From\'s email domain does not match DKIM d tag')
                             elif (msg.get_content_subtype() == 'signed'):
                                 subjaltnames = None
                                 for att in msg.iter_attachments():
