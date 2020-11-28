@@ -116,12 +116,13 @@ def main(args):
         request_cert(args, config)
         
 def process_args(args):
-    if (len(args.email) > 1):
-        raise argparse.ArgumentTypeError("Multiple e-mails are not allowed")
+    for e in args.email:
+        if ('*' in e):
+            raise argparse.ArgumentTypeError("Wildcards are not allowed in email addresses")
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Requests a S/MIME certificate')
-    parser.add_argument('-e','--email', help='E-mail of the issued certificate', required=True, action='append')
+    parser.add_argument('-e','--email', help='E-mail address to certify. Multiple e-mail addresses are allowed', required=True, action='append')
     parser.add_argument('-t','--test', help='Tests the certification from a staging server', action='store_true')
     parser.add_argument('--dry-run', help='Do not store any file. For testing', action='store_true')
     parser.add_argument('-n','--non-interactive', help='Runs the certification without any user interaction', action='store_true')
