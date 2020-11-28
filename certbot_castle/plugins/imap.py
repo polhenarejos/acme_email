@@ -101,9 +101,9 @@ class Authenticator(common.Plugin):
         for i in range(30):
             idle = self.imap.idle_check(timeout=10)
             for msg in idle:
-                self.imap.idle_done()
                 uid, state = msg
                 if state == b'EXISTS':
+                    self.imap.idle_done()
                     respo = self.imap.fetch(uid, ['RFC822'])
                     for message_id, data in respo.items():
                         if (b'RFC822' in data):
