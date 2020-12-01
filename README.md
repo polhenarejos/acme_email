@@ -69,6 +69,9 @@ To use it:
 	  
 Some of the parameters are shared by Certbot software, since it manages the protocol stack and data flow between the client and the ACME server. Sooner more parameters will be added.
 
+Multiple email addresses can be specified. All these addresses will be added to `subjectAltNames` extension with the identifier `email` into a single certificate. **No wildcards are allowed**. This is useful when you use multiple alias under the same email account. Keep in mind that there are some rate limits on the number of addresses that can be included in a single certificate. Consult them at [Rate Limits](https://acme.castle.cloud/documentation/rate-limits "Rate Limits"). To specify multiple email addresses use `--email` flag so many times as needed.
+
+
 ### Key Usage
 The ACME Email protocol defines the possibility to specify the key usage of the issued certificate. Currently, four (4) usages are allowed:
 * For signing only:
@@ -122,7 +125,6 @@ After this, the client will negotiate with [CASTLE Platform® ACME Server](https
 4. With the `<token>`you provided, the client will generate the **challenge response**, which has the form `-----BEGIN ACME RESPONSE-----...-----END ACME RESPONSE-----`.
 5. Copy the response and reply the ACME e-mail you received. Paste the challenge response in the **top of the message's body** and send it back to the ACME server.
 
-
 **IMPORTANT: Remind that your private key is not transmitted to ACME server, nor flows through internet at any time. The CSR contains your public key linked to your private key and the ACME server generates the public certificate based on it, without the need of the private key.**
 
 _(Reminder: private and public keys are generated automatically, you do not have to worry about that.)_
@@ -137,6 +139,7 @@ _(Reminder: private and public keys are generated automatically, you do not have
 * Fully automated or interactive.
 * IMAP and SMTP support for automated ACME replies.
 * DKIM and S/MIME checks for message authentication.
+* Multiple email addresses in a single certificate.
 * Staging ACME server for test environments.
 * Supports an interactive text UI, or can be driven entirely from the command line.
 * Free and Open Source Software, made with Python.
