@@ -61,7 +61,7 @@ def request_cert(args, config):
         if (args.smtp_login):
             cli_args.extend(['--castle-imap-smtp-login',args.smtp_login])
         if (args.smtp_password):
-            cli_args.extend(['--castle-imap-smtp-login',args.smtp_password])
+            cli_args.extend(['--castle-imap-smtp-password',args.smtp_password])
         cli_args.extend(['--castle-imap-smtp-host',args.smtp_host])
         if (args.smtp_port):
             cli_args.extend(['--castle-imap-smtp-port',args.smtp_port])
