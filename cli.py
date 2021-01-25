@@ -39,7 +39,6 @@ def prepare_config(cli_args):
 
 def request_cert(args, config):
     key, csr = csr_util.prepare(args.email, config, usage=args.usage)
-    #certbot certonly --config-dir . --work-dir . --logs-dir . --server https://acme.castle.cloud/acme/directory --csr csr/test.pem -a castle-interactive -d trocotronic@redyc.com
     ## Reparse for including --csr arguments
     cli_args = prepare_cli_args(args)
     cli_args.extend(['--csr',csr.file])
