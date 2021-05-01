@@ -106,10 +106,11 @@ def main(args):
         certbot_main.make_or_verify_needed_dirs(config)
     except errors.Error:
         raise
-    certbot_main.set_displayer(config)
     report = reporter.Reporter(config)
     zope.component.provideUtility(report)
     util.atexit_register(report.print_messages)
+    with certbot_main.make_displayer(config) as displayer:
+        zope.component.provideUtility(displayer)
 
     if (command == 'cert'):
         request_cert(args, config)
