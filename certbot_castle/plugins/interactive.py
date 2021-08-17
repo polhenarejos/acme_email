@@ -1,4 +1,5 @@
 import logging
+import abc
 
 import zope.interface
 
@@ -12,9 +13,7 @@ import josepy as jose
 
 logger = logging.getLogger(__name__)
 
-@zope.interface.implementer(interfaces.IAuthenticator)
-@zope.interface.provider(interfaces.IPluginFactory)
-class Authenticator(common.Plugin):
+class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMeta):
 
     description = "Performs the S/MIME challenge"
 

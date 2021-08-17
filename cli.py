@@ -5,12 +5,14 @@ import zope.component
 from certbot._internal.plugins import disco as plugins_disco
 from certbot._internal.plugins import selection as plug_sel
 from certbot._internal import cli
-from certbot._internal import configuration
 from certbot._internal import main as certbot_main
 from certbot._internal import reporter
 from certbot._internal import log
+from certbot._internal.display import obj as display_obj
 from certbot import errors
 from certbot import util
+from certbot import configuration
+from certbot import interfaces
 
 from certbot_castle import csr as csr_util
 
@@ -34,7 +36,7 @@ def prepare_config(cli_args):
     plugins = plugins_disco.PluginsRegistry.find_all()
     cargs = cli.prepare_and_parse_args(plugins, cli_args)
     config = configuration.NamespaceConfig(cargs)
-    zope.component.provideUtility(config)
+    zope.component.provideUtility(config, interfaces.IConfig)
     return config,plugins
 
 def request_cert(args, config):
@@ -108,10 +110,10 @@ def main(args):
     except errors.Error:
         raise
     report = reporter.Reporter(config)
-    zope.component.provideUtility(report)
+    zope.component.provideUtility(report, interfaces.IReporter)
     util.atexit_register(report.print_messages)
     with certbot_main.make_displayer(config) as displayer:
-        zope.component.provideUtility(displayer)
+        display_obj.set_display(displayer)
 
     if (command == 'cert'):
         request_cert(args, config)

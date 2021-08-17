@@ -1,4 +1,5 @@
 import logging
+import abc
 
 import zope.interface
 
@@ -14,9 +15,7 @@ from cryptography.hazmat.primitives.serialization import pkcs12
 
 logger = logging.getLogger(__name__)
 
-@zope.interface.implementer(interfaces.IInstaller)
-@zope.interface.provider(interfaces.IPluginFactory)
-class Installer(common.Plugin):
+class Installer(common.Plugin, interfaces.Installer, metaclass=abc.ABCMeta):
     
     description = "Generates PKCS12 container from S/MIME challenge"
     
