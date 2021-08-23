@@ -21,6 +21,7 @@ from smtplib import SMTP, SMTP_SSL
 import ssl, email
 
 from cryptography.hazmat.primitives.serialization import pkcs7
+from cryptography.hazmat.primitives import hashes  # type: ignore
 from cryptography.x509.oid import ExtensionOID
 from cryptography import x509
 
@@ -168,7 +169,10 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
                                 message += 'To: {}\n'.format(to)
                                 message += 'In-Reply-To: {}\n'.format(msg['Message-ID'])
                                 message += 'Subject: Re: {}\n\n'.format(subject)
-                                message += '-----BEGIN ACME RESPONSE-----\n{}\n-----END ACME RESPONSE-----\n'.format(validation)
+                                digest = hashes.Hash(hashes.SHA256())
+                                digest.update(validation.encode())
+                                thumbprint = jose.b64encode(digest.finalize()).decode()
+                                message += '-----BEGIN ACME RESPONSE-----\n{}\n-----END ACME RESPONSE-----\n'.format(thumbprint)
                                 self.smtp.sendmail(me,to,message)
                                 
                                 self.imap.add_flags(message_id,imapclient.SEEN)

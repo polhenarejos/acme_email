@@ -11,6 +11,8 @@ from certbot_castle import challenge
 
 import josepy as jose
 
+from cryptography.hazmat.primitives import hashes  # type: ignore
+
 logger = logging.getLogger(__name__)
 
 class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMeta):
@@ -56,10 +58,13 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
         # We reconstruct the ChallengeBody
         challt = messages.ChallengeBody.from_json({ 'type': 'email-reply-00', 'token': jose.b64.b64encode(bytes(full_token)).decode('ascii'), 'url': achall.challb.uri, 'status': achall.challb.status.to_json(), 'from': achall.challb.chall.from_addr })
         response, validation = challt.response_and_validation(achall.account_key)
+        digest = hashes.Hash(hashes.SHA256())
+        digest.update(validation.encode())
+        thumbprint = jose.b64encode(digest.finalize()).decode()
         notify('A challenge response has been generated. Please, copy the following text, reply the e-mail you have received from ACME server and paste this text in the TOP of the message\'s body: ',pause=False)
         print('\n-----BEGIN ACME RESPONSE-----\n'
             '{}\n'
-            '-----END ACME RESPONSE-----\n'.format(validation))
+            '-----END ACME RESPONSE-----\n'.format(thumbprint))
         return response
 
     def cleanup(self, achalls):  # pylint: disable=missing-function-docstring
