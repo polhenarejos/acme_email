@@ -60,7 +60,8 @@ class Installer(common.Plugin, interfaces.Installer, metaclass=abc.ABCMeta):
                     notify('Passphrases do not match.',pause=False)
                     code, vpf = input('Re-enter passphrase: ', force_interactive=True)
                 passphrase = pf.encode('utf-8')
-        pfxdata = pkcs12.serialize_key_and_certificates(name=domain.encode('utf-8'), key=privkey, cert=cert, cas=[chain], encryption_algorithm=serialization.BestAvailableEncryption(passphrase))
+        algo = serialization.BestAvailableEncryption(passphrase) if passphrase else serialization.NoEncryption()
+        pfxdata = pkcs12.serialize_key_and_certificates(name=domain.encode('utf-8'), key=privkey, cert=cert, cas=[chain], encryption_algorithm=algo)
         path, _ = os.path.split(cert_path)
         pfx_f, pfx_filename = util.unique_file(os.path.join(path, 'cert-certbot.pfx'), 0o600, "wb")
         with pfx_f:
