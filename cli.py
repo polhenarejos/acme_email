@@ -92,7 +92,7 @@ def request_cert(args, config):
     config.cert_path = cert_path
     config.fullchain_path = fullchain_path
     config.chain_path = chain_path
-    certbot_main._report_new_cert(config, cert_path, chain_path, fullchain_path)
+    certbot_main._report_new_cert(config, cert_path, fullchain_path, key.file)
     if (not config.dry_run):
         certbot_main._install_cert(config, le_client, args.email)
     else:
