@@ -16,7 +16,7 @@ from certbot.plugins import common
 from certbot_castle import challenge
 
 import josepy as jose
-import imapclient
+import imapclient, imaplib
 from smtplib import SMTP, SMTP_SSL
 import ssl, email
 
@@ -185,5 +185,8 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
 
     def cleanup(self, achalls):  # pylint: disable=missing-function-docstring
         #self.imap.idle_done()
-        self.imap.logout()
+        try:
+            self.imap.logout()
+        except imaplib.IMAP4.abort:
+            pass
         self.smtp.quit()
