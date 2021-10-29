@@ -46,7 +46,8 @@ setup(
         'acme>=1.18.0',
         'setuptools',
         'zope.interface',
-        'imapclient'
+        'imapclient',
+        'dkimpy'
     ],
     include_package_data=True,
     entry_points={

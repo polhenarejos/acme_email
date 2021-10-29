@@ -28,6 +28,8 @@ from cryptography import x509
 from email.message import EmailMessage
 from email import policy
 
+import dkim
+
 logger = logging.getLogger(__name__)
 
 class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMeta):
@@ -113,15 +115,15 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
                             if (msg['To'] != achall.domain):
                                 continue
                             subject = msg['Subject']
-                            dkim = msg.get('DKIM-Signature',None)
+                            dkim_signature = msg.get('DKIM-Signature',None)
                             from_addr = email.utils.parseaddr(msg['From'])[1]
-                            if (dkim):
+                            if (dkim_signature):
                                 if ('Authentication-Results' not in msg):
-                                    raise errors.AuthorizationError('DKIM signature is used but your email provider does not insert "Authentication-Results" header')
+                                    msg['Authentication-Results'] = 'dkim=pass' if dkim.verify(bytes(msg)) else 'dkim=nopass'
                                 if ('dkim=pass' not in msg['Authentication-Results'].lower()):
                                     raise errors.AuthorizationError('DKIM signature is used but it does not pass the verification')
                                 dkim_tags = {}
-                                for d in dkim.split(';'):
+                                for d in dkim_signature.split(';'):
                                     t = d.strip().split('=')
                                     dkim_tags[t[0]] = t[1]
                                 if ('h' not in dkim_tags):
