@@ -44,7 +44,7 @@ class Installer(common.Plugin, interfaces.Installer, metaclass=abc.ABCMeta):
         logger.debug('Loading key ')
         privkey = serialization.load_pem_private_key(open(key_path,'rb').read(), password=None)
         logger.debug('Loading chain ')
-        chain = x509.load_pem_x509_certificate(open(fullchain_path,'rb').read())
+        chain = x509.load_pem_x509_certificate(open(chain_path,'rb').read())
         notify = zope.component.getUtility(interfaces.IDisplay).notification
         passphrase = None
         if (not self.conf('no-passphrase')):
