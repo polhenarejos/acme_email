@@ -1,5 +1,6 @@
 import logging
 import abc
+import getpass
 
 import zope.interface
 
@@ -53,12 +54,11 @@ class Installer(common.Plugin, interfaces.Installer, metaclass=abc.ABCMeta):
             else:
                 text = 'A passphrase is needed for protecting the PKCS12 container. '
                 notify(text,pause=False)
-                input = zope.component.getUtility(interfaces.IDisplay).input
-                code,pf = input('Enter passphrase: ', force_interactive=True)
-                code,vpf = input('Re-enter passphrase: ', force_interactive=True)
+                pf = getpass.getpass('Enter passphrase: ')
+                vpf = getpass.getpass('Re-enter passphrase: ')
                 while (pf != vpf):
                     notify('Passphrases do not match.',pause=False)
-                    code, vpf = input('Re-enter passphrase: ', force_interactive=True)
+                    vpf = getpass.getpass('Re-enter passphrase: ')
                 passphrase = pf.encode('utf-8')
         algo = serialization.BestAvailableEncryption(passphrase) if passphrase else serialization.NoEncryption()
         pfxdata = pkcs12.serialize_key_and_certificates(name=domain.encode('utf-8'), key=privkey, cert=cert, cas=[chain], encryption_algorithm=algo)
