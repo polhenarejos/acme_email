@@ -69,7 +69,7 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
         if (method == 'STARTTLS'):
             context = ssl.create_default_context()
             port = port if port else 587
-            self.smtp = SMTP(self.conf('smtp-host'),port=port)
+            self.smtp = SMTP(smtp_server,port=port)
             self.smtp.ehlo()
             self.smtp.starttls(context=context) # Secure the connection
             self.smtp.ehlo() # Can be omitted
