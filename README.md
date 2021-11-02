@@ -12,8 +12,17 @@ RFC 8823 describes the procedure to validate the authenticity of an e-mail. It d
 
 We implemented the ACME server at [CASTLE Platform®](https://www.castle.cloud/ "CASTLE Platform®") and it fits and follows the specifications for obtaining S/MIME certificates. Obviously, [CASTLE Platform® Certification Authority](https://ca.castle.cloud/ "CASTLE Platform® CA") is not the same as Let's Encrypt, it uses its own. Fortunately, [CASTLE Platform® CA](https://ca.castle.cloud/ "CASTLE Platform® CA") follows the same standards as other common CA, with the same compatibilities and extensions. If [CASTLE Platform® CA](https://ca.castle.cloud/ "CASTLE Platform® CA") is trusted, the obtained S/MIME certificate is likely similar to the ones obtained through paying CA.
 
+## Installation
+It is preferably to create a Virtual Environment and install the package as follows:
+
+    python3 -m venv venv
+    source venv/bin/activate
+    pip3 install .
+    
+It will install all dependancies and required packages. With the virtual environment activated, you can continue using the client `cli.py`.
+             
 ## How to use it
-ACME E-mail S/MIME client uses the Certbot framework for managing ACME protocols. However, the official software does not provide support for S/MIME certification. To cirvument this issue, we bypass some procedures (CSR -- Certificate Signature Request mainly) to acomplish standard specifications. `cli.py` performs all this stuff by generating CSR with the correct extension and executes Certbot with the correct parameters.
+ACME E-mail S/MIME client uses the Certbot framework for managing ACME protocols. However, the official software does not provide support for S/MIME certification. To circumvent this issue, we bypass some procedures (CSR -- Certificate Signature Request mainly) to acomplish standard specifications. `cli.py` performs all this stuff by generating CSR with the correct extension and executes Certbot with the correct parameters.
 
 To use it:
 
