@@ -20,6 +20,7 @@ def make(pkey_pem, emails, usage):
     csr = x509.CertificateSigningRequestBuilder().subject_name(
         x509.Name([
             x509.NameAttribute(NameOID.COMMON_NAME, emails[0]),
+            x509.NameAttribute(NameOID.EMAIL_ADDRESS, emails[0]),
         ])
         ).add_extension(
             x509.SubjectAlternativeName([
