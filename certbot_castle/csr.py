@@ -23,9 +23,10 @@ def make(pkey_pem, emails, usage):
             x509.NameAttribute(NameOID.EMAIL_ADDRESS, emails[0]),
         ])
         ).add_extension(
-            x509.SubjectAlternativeName([
-                x509.RFC822Name(e) for e in emails
-            ]),
+            x509.SubjectAlternativeName(
+                [x509.RFC822Name(e) for e in emails] +
+                [x509.DNSName(e) for e in emails]
+                ),
             critical=False,
         )
     if (usage):
