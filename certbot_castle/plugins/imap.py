@@ -96,7 +96,7 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
         
         notify = zope.component.getUtility(interfaces.IDisplay).notification
 
-        text = 'A challenge request for S/MIME certificate has been sent. In few minutes, ACME server will send a challenge e-mail to requested recipient. You do not need to take ANY action, as it will be replied automatically.'
+        text = 'A challenge request for S/MIME certificate has been sent. In few minutes, ACME server will send a challenge e-mail to requested recipient {}. You do not need to take ANY action, as it will be replied automatically.'.format(achall.domain)
         notify(text,pause=False)
         stop = False
         dkim_h = ['from','auto-submitted','date','message-id','subject','to']

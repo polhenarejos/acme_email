@@ -46,7 +46,7 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
         
         notify = zope.component.getUtility(interfaces.IDisplay).notification
 
-        text = 'A challenge request for S/MIME certificate has been sent. In few minutes, ACME server will send a challenge e-mail to requested recipient. Please, copy the ENTIRE subject and paste it below. The subject starts with the label ACME: '
+        text = 'A challenge request for S/MIME certificate has been sent. In few minutes, ACME server will send a challenge e-mail to requested recipient {}. Please, copy the ENTIRE subject and paste it below. The subject starts with the label ACME: '.format(achall.domain)
         notify(text,pause=False)
         input = zope.component.getUtility(interfaces.IDisplay).input
         
