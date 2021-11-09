@@ -24,12 +24,15 @@ def prepare_cli_args(args):
     if (args.config_dir): cli_args.extend(['--config-dir',args.config_dir])
     if (args.work_dir): cli_args.extend(['--work-dir',args.work_dir])
     if (args.logs_dir): cli_args.extend(['--logs-dir',args.logs_dir])
+    
     if (command == 'cert'): cli_args.extend(['certonly'])
     else: cli_args.extend([command])
-    if (args.dry_run):    
-        cli_args.extend(['--dry-run'])
-    for email in args.email:
-        cli_args.extend(['-d',email])
+    
+    if (args.test): cli_args.extend(['--server','https://acme-staging.castle.cloud/acme/directory'])
+    else: cli_args.extend(['--server','https://acme.castle.cloud/acme/directory'])
+    
+    if (args.non_interactive): cli_args.extend(['-n'])
+        
     return cli_args
 
 def prepare_config(cli_args):    
@@ -43,11 +46,11 @@ def request_cert(args, config):
     key, csr = csr_util.prepare(args.email, config, usage=args.usage)
     ## Reparse for including --csr arguments
     cli_args = prepare_cli_args(args)
+    if (args.dry_run):    
+        cli_args.extend(['--dry-run'])
+    for email in args.email:
+        cli_args.extend(['-d',email])
     cli_args.extend(['--csr',csr.file])
-    if (args.test):
-        cli_args.extend(['--server','https://acme-staging.castle.cloud/acme/directory'])
-    else:
-        cli_args.extend(['--server','https://acme.castle.cloud/acme/directory'])
     if (args.imap):
         cli_args.extend(['-a','castle-imap'])
         cli_args.extend(['--castle-imap-login',args.login])
@@ -76,8 +79,6 @@ def request_cert(args, config):
     cli_args.extend(['-m',args.contact])
     if (args.agree_tos):    
         cli_args.extend(['--agree-tos'])
-    if (args.non_interactive):    
-        cli_args.extend(['-n'])
     config,plugins = prepare_config(cli_args)
     config.key_path = key.file
     try:
@@ -97,6 +98,20 @@ def request_cert(args, config):
         certbot_main._install_cert(config, le_client, args.email)
     else:
         util.safely_remove(csr.file)
+        
+def revoke_cert(args, config):
+    cli_args = prepare_cli_args(args)
+    if (args.cert_path):
+        cli_args.extend(['--cert-path',args.cert_path])
+    if (args.cert_name):
+        cli_args.extend(['--cert-name',args.cert_name])
+    if (args.reason):
+        cli_args.extend(['--reason',args.reason])
+    cli_args.extend(['--no-delete-after-revoke'])
+    if (args.key_path):
+        cli_args.extend(['--key-path',args.key_path])
+    config,plugins = prepare_config(cli_args)
+    certbot_main.revoke(config,plugins)
     
 def main(args):
     ## Prepare storage system
@@ -110,22 +125,25 @@ def main(args):
     except errors.Error:
         raise
     report = reporter.Reporter(config)
-    zope.component.provideUtility(report, interfaces.IReporter)
+    #zope.component.provideUtility(report, interfaces.IReporter)
     util.atexit_register(report.print_messages)
     with certbot_main.make_displayer(config) as displayer:
         display_obj.set_display(displayer)
 
     if (command == 'cert'):
         request_cert(args, config)
+    elif (command == 'revoke'):
+        revoke_cert(args, config)
         
 def process_args(args):
-    for e in args.email:
-        if ('*' in e):
-            raise argparse.ArgumentTypeError("Wildcards are not allowed in email addresses")
+    if args.email:
+        for e in args.email:
+            if ('*' in e):
+                raise argparse.ArgumentTypeError("Wildcards are not allowed in email addresses")
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Requests a S/MIME certificate')
-    parser.add_argument('-e','--email', help='E-mail address to certify. Multiple e-mail addresses are allowed', required=True, action='append')
+    parser.add_argument('-e','--email', help='E-mail address to certify. Multiple e-mail addresses are allowed', required='cert' in sys.argv, action='append')
     parser.add_argument('-t','--test', help='Tests the certification from a staging server', action='store_true')
     parser.add_argument('--dry-run', help='Do not store any file. For testing', action='store_true')
     parser.add_argument('-n','--non-interactive', help='Runs the certification without any user interaction', action='store_true')
@@ -153,6 +171,11 @@ def parse_args():
     parser.add_argument('--passphrase',help='Passphrase to use for the PKCS12 generation. This passpharse will be used for private key encryption')
     
     parser.add_argument('--usage', help='Key usage for certificate. Multiple usages can be specified', choices=['digitalSignature','contentCommitment','keyEncipherment','keyAgreement'], action='append')
+
+    parser.add_argument('--cert-path',help='Path where certificate is located',required='revoke' in sys.argv and '--cert-name' not in sys.argv)
+    parser.add_argument('--cert-name',help='Name of the certificate to revoke', required='revoke' in sys.argv and '--cert-path' not in sys.argv)
+    parser.add_argument('--reason',help='Reason of revocation',choices=['unspecified','keycompromise','affiliationchanged','superseded','cessationofoperation'])
+    parser.add_argument('--key-path',help='Path of private key location, only if account key is missing')
 
     args = parser.parse_args()
     process_args(args)
