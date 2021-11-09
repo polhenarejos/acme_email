@@ -42,8 +42,8 @@ setup(
         'Topic :: Utilities',
     ],
     install_requires=[
-        'certbot>=1.18.0',
-        'acme>=1.18.0',
+        'certbot>=1.20.0',
+        'acme>=1.20.0',
         'setuptools',
         'zope.interface',
         'imapclient',
