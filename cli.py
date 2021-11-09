@@ -40,6 +40,9 @@ def prepare_config(cli_args):
     cargs = cli.prepare_and_parse_args(plugins, cli_args)
     config = configuration.NamespaceConfig(cargs)
     zope.component.provideUtility(config, interfaces.IConfig)
+    config.cert_path = config.live_dir+'/cert.pem'
+    config.chain_path = config.live_dir+'/ca.pem'
+    config.fullchain_path = config.live_dir+'/chain.pem'
     return config,plugins
 
 def request_cert(args, config):

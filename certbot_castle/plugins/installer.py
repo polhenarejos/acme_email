@@ -63,7 +63,7 @@ class Installer(common.Plugin, interfaces.Installer, metaclass=abc.ABCMeta):
         algo = serialization.BestAvailableEncryption(passphrase) if passphrase else serialization.NoEncryption()
         pfxdata = pkcs12.serialize_key_and_certificates(name=domain.encode('utf-8'), key=privkey, cert=cert, cas=[chain], encryption_algorithm=algo)
         path, _ = os.path.split(cert_path)
-        pfx_f, pfx_filename = util.unique_file(os.path.join(path, 'cert-certbot.pfx'), 0o600, "wb")
+        pfx_f, pfx_filename = util.unique_file(os.path.join(path, 'cert.pfx'), 0o600, "wb")
         with pfx_f:
             pfx_f.write(pfxdata)
         notify('PKCS12 container generated at '+pfx_filename,pause=False)
