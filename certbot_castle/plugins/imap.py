@@ -6,12 +6,11 @@ logging.basicConfig(
     level=logging.DEBUG
 )
 
-import zope.interface
-
 from acme import messages
 from certbot import interfaces
 from certbot import errors
 from certbot.plugins import common
+from certbot.display import util as display_util
 
 from certbot_castle import challenge
 
@@ -94,10 +93,8 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
     def _perform_emailreply00(self, achall):
         response, _ = achall.challb.response_and_validation(achall.account_key)
         
-        notify = zope.component.getUtility(interfaces.IDisplay).notification
-
         text = 'A challenge request for S/MIME certificate has been sent. In few minutes, ACME server will send a challenge e-mail to requested recipient {}. You do not need to take ANY action, as it will be replied automatically.'.format(achall.domain)
-        notify(text,pause=False)
+        display_util.notification(text,pause=False)
         stop = False
         dkim_h = ['from','auto-submitted','date','message-id','subject','to']
         for i in range(30):
@@ -179,7 +176,7 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
                                 
                                 self.imap.add_flags(message_id,imapclient.SEEN)
                                 self.imap.add_flags(message_id,imapclient.DELETED)
-                                notify('The ACME response has been sent successfully!',pause=False)
+                                display_util.notification('The ACME response has been sent successfully!',pause=False)
                                 stop = True
             if (stop):
                 break

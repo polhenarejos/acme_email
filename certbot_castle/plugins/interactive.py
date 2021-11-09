@@ -1,11 +1,10 @@
 import logging
 import abc
 
-import zope.interface
-
 from acme import messages
 from certbot import interfaces
 from certbot.plugins import common
+from certbot.display import util as display_util
 
 from certbot_castle import challenge
 
@@ -44,13 +43,10 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
     def _perform_emailreply00(self, achall):
         response, _ = achall.challb.response_and_validation(achall.account_key)
         
-        notify = zope.component.getUtility(interfaces.IDisplay).notification
-
         text = 'A challenge request for S/MIME certificate has been sent. In few minutes, ACME server will send a challenge e-mail to requested recipient {}. Please, copy the ENTIRE subject and paste it below. The subject starts with the label ACME: '.format(achall.domain)
-        notify(text,pause=False)
-        input = zope.component.getUtility(interfaces.IDisplay).input
-        
-        code,subject = input('Subject: ', force_interactive=True)
+        display_util.notification(text,pause=False)
+
+        code,subject = display_util.input_text('Subject: ', force_interactive=True)
         token64 = subject.split(' ')[-1]
         token1 = jose.b64.b64decode(token64)
         full_token = token1+achall.chall.token
@@ -61,7 +57,7 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
         digest = hashes.Hash(hashes.SHA256())
         digest.update(validation.encode())
         thumbprint = jose.b64encode(digest.finalize()).decode()
-        notify('A challenge response has been generated. Please, copy the following text, reply the e-mail you have received from ACME server and paste this text in the TOP of the message\'s body: ',pause=False)
+        display_util.notification('A challenge response has been generated. Please, copy the following text, reply the e-mail you have received from ACME server and paste this text in the TOP of the message\'s body: ',pause=False)
         print('\n-----BEGIN ACME RESPONSE-----\n'
             '{}\n'
             '-----END ACME RESPONSE-----\n'.format(thumbprint))

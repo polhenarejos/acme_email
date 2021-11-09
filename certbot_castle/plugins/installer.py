@@ -2,13 +2,12 @@ import logging
 import abc
 import getpass
 
-import zope.interface
-
 from certbot import interfaces
 from certbot import util
 from certbot import errors
 from certbot.plugins import common
 from certbot.compat import os
+from certbot.display import util as display_util
 
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
@@ -46,18 +45,17 @@ class Installer(common.Plugin, interfaces.Installer, metaclass=abc.ABCMeta):
         privkey = serialization.load_pem_private_key(open(key_path,'rb').read(), password=None)
         logger.debug('Loading chain ')
         chain = x509.load_pem_x509_certificate(open(chain_path,'rb').read())
-        notify = zope.component.getUtility(interfaces.IDisplay).notification
         passphrase = None
         if (not self.conf('no-passphrase')):
             if (self.conf('passphrase')):
                 passphrase = self.conf('passphrase').encode('utf-8')
             else:
                 text = 'A passphrase is needed for protecting the PKCS12 container. '
-                notify(text,pause=False)
+                display_util.notification(text,pause=False)
                 pf = getpass.getpass('Enter passphrase: ')
                 vpf = getpass.getpass('Re-enter passphrase: ')
                 while (pf != vpf):
-                    notify('Passphrases do not match.',pause=False)
+                    display_util.notify('Passphrases do not match.')
                     vpf = getpass.getpass('Re-enter passphrase: ')
                 passphrase = pf.encode('utf-8')
         algo = serialization.BestAvailableEncryption(passphrase) if passphrase else serialization.NoEncryption()
@@ -66,7 +64,7 @@ class Installer(common.Plugin, interfaces.Installer, metaclass=abc.ABCMeta):
         pfx_f, pfx_filename = util.unique_file(os.path.join(path, 'cert.pfx'), 0o600, "wb")
         with pfx_f:
             pfx_f.write(pfxdata)
-        notify('PKCS12 container generated at '+pfx_filename,pause=False)
+        display_util.notification('PKCS12 container generated at '+pfx_filename,pause=False)
 
     def enhance(self, domain, enhancement, options=None):
         pass  # pragma: no cover

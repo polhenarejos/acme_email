@@ -9,10 +9,12 @@ from certbot._internal import main as certbot_main
 from certbot._internal import reporter
 from certbot._internal import log
 from certbot._internal.display import obj as display_obj
+from certbot.display import util as display_util
 from certbot import errors
 from certbot import util
 from certbot import configuration
 from certbot import interfaces
+from certbot.compat import misc
 
 from certbot_castle import csr as csr_util
 
@@ -136,8 +138,7 @@ def revoke_cert(args, config):
                 passphrase = args.passphrase.encode('utf-8')
             else:
                 text = 'Introduce the passphrase of the PKCS12 file.'
-                notify = zope.component.getUtility(interfaces.IDisplay).notification
-                notify(text,pause=False)
+                display_util.notification(text,pause=False)
                 pf = getpass.getpass('Enter passphrase: ')
                 passphrase = pf.encode('utf-8')
             try:
@@ -165,13 +166,15 @@ def main(args):
     log.pre_arg_parse_setup()
     cli_args = prepare_cli_args(args)
     config,_ = prepare_config(cli_args)
+    misc.raise_for_non_administrative_windows_rights()
+
     try:
         log.post_arg_parse_setup(config)
         certbot_main.make_or_verify_needed_dirs(config)
     except errors.Error:
         raise
     report = reporter.Reporter(config)
-    #zope.component.provideUtility(report, interfaces.IReporter)
+    zope.component.provideUtility(report, interfaces.IReporter)
     util.atexit_register(report.print_messages)
     with certbot_main.make_displayer(config) as displayer:
         display_obj.set_display(displayer)
