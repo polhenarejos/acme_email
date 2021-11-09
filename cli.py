@@ -108,8 +108,6 @@ def revoke_cert(args, config):
     cli_args = prepare_cli_args(args)
     if (args.cert_path):
         cli_args.extend(['--cert-path',args.cert_path])
-    if (args.cert_name):
-        cli_args.extend(['--cert-name',args.cert_name])
     if (args.reason):
         cli_args.extend(['--reason',args.reason])
     cli_args.extend(['--no-delete-after-revoke'])
@@ -178,7 +176,6 @@ def parse_args():
     parser.add_argument('--usage', help='Key usage for certificate. Multiple usages can be specified', choices=['digitalSignature','contentCommitment','keyEncipherment','keyAgreement'], action='append')
 
     parser.add_argument('--cert-path',help='Path where certificate is located',required='revoke' in sys.argv and '--cert-name' not in sys.argv)
-    parser.add_argument('--cert-name',help='Name of the certificate to revoke', required='revoke' in sys.argv and '--cert-path' not in sys.argv)
     parser.add_argument('--reason',help='Reason of revocation',choices=['unspecified','keycompromise','affiliationchanged','superseded','cessationofoperation'])
     parser.add_argument('--key-path',help='Path of private key location, only if account key is missing')
 
