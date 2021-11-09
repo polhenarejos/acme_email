@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import argparse, logging, sys
+import argparse, logging, sys, getpass, tempfile, os
 import zope.component
 from certbot._internal.plugins import disco as plugins_disco
 from certbot._internal.plugins import selection as plug_sel
@@ -15,6 +15,9 @@ from certbot import configuration
 from certbot import interfaces
 
 from certbot_castle import csr as csr_util
+
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.serialization import pkcs12, Encoding
 
 logger = logging.getLogger(__name__)   
  
@@ -104,17 +107,57 @@ def request_cert(args, config):
     else:
         util.safely_remove(csr.file)
         
+def try_open_p12(file,passphrase=None):
+    with open(args.cert_path,'rb') as p12:
+        (private_key, certificate, _) = pkcs12.load_key_and_certificates(p12.read(),passphrase)
+        temp_cert = tempfile.NamedTemporaryFile(delete=False)
+        temp_cert.write(certificate.public_bytes(Encoding.PEM))
+        temp_cert.close()
+        temp_pkey = tempfile.NamedTemporaryFile(delete=False)
+        temp_pkey.write(private_key.private_bytes(encoding=Encoding.PEM,format=serialization.PrivateFormat.PKCS8,encryption_algorithm=serialization.NoEncryption()))
+        temp_pkey.close()
+        return temp_pkey.name,temp_cert.name
+    return None,None
+         
 def revoke_cert(args, config):
     cli_args = prepare_cli_args(args)
-    if (args.cert_path):
-        cli_args.extend(['--cert-path',args.cert_path])
     if (args.reason):
         cli_args.extend(['--reason',args.reason])
     cli_args.extend(['--no-delete-after-revoke'])
-    if (args.key_path):
-        cli_args.extend(['--key-path',args.key_path])
+    key_path,cert_path = None,None
+    try:
+        key_path,cert_path = try_open_p12(args.cert_path)
+        cli_args.extend(['--cert-path',cert_path])
+        cli_args.extend(['--key-path',key_path])
+    except ValueError as e: 
+        if ('Invalid password' in str(e)):
+            passphrase = None
+            if (args.passphrase):
+                passphrase = args.passphrase.encode('utf-8')
+            else:
+                text = 'Introduce the passphrase of the PKCS12 file.'
+                notify = zope.component.getUtility(interfaces.IDisplay).notification
+                notify(text,pause=False)
+                pf = getpass.getpass('Enter passphrase: ')
+                passphrase = pf.encode('utf-8')
+            try:
+                key_path,cert_path = try_open_p12(args.cert_path,passphrase=passphrase)
+                cli_args.extend(['--cert-path',cert_path])
+                cli_args.extend(['--key-path',key_path])
+            except ValueError as e:
+                if ('Invalid password' in str(e)):
+                    raise e
+        elif ('Could not deserialize'): #pem
+            if (args.cert_path):
+                cli_args.extend(['--cert-path',args.cert_path])
+            if (args.key_path):
+                cli_args.extend(['--key-path',args.key_path])
     config,plugins = prepare_config(cli_args)
     certbot_main.revoke(config,plugins)
+    if (key_path):
+        os.unlink(key_path)
+    if (cert_path):
+        os.unlink(cert_path)
     
 def main(args):
     ## Prepare storage system
@@ -175,7 +218,7 @@ def parse_args():
     
     parser.add_argument('--usage', help='Key usage for certificate. Multiple usages can be specified', choices=['digitalSignature','contentCommitment','keyEncipherment','keyAgreement'], action='append')
 
-    parser.add_argument('--cert-path',help='Path where certificate is located',required='revoke' in sys.argv and '--cert-name' not in sys.argv)
+    parser.add_argument('--cert-path',help='Path where certificate is located',required='revoke' in sys.argv)
     parser.add_argument('--reason',help='Reason of revocation',choices=['unspecified','keycompromise','affiliationchanged','superseded','cessationofoperation'])
     parser.add_argument('--key-path',help='Path of private key location, only if account key is missing')
 
