@@ -6,7 +6,6 @@ logging.basicConfig(
     level=logging.DEBUG
 )
 
-from acme import messages
 from certbot import interfaces
 from certbot import errors
 from certbot.plugins import common
@@ -14,20 +13,15 @@ from certbot.display import util as display_util
 
 from certbot_castle import challenge
 
-import josepy as jose
 import imapclient, imaplib
 from smtplib import SMTP, SMTP_SSL
 import ssl, email
 
-from cryptography.hazmat.primitives.serialization import pkcs7
-from cryptography.hazmat.primitives import hashes  # type: ignore
-from cryptography.x509.oid import ExtensionOID
-from cryptography import x509
 
 from email.message import EmailMessage
 from email import policy
 
-import dkim
+from . import castle
 
 logger = logging.getLogger(__name__)
 
@@ -95,8 +89,7 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
         
         text = 'A challenge request for S/MIME certificate has been sent. In few minutes, ACME server will send a challenge e-mail to requested recipient {}. You do not need to take ANY action, as it will be replied automatically.'.format(achall.domain)
         display_util.notification(text,pause=False)
-        stop = False
-        dkim_h = ['from','auto-submitted','date','message-id','subject','to']
+        sent = False
         for i in range(30):
             idle = self.imap.idle_check(timeout=10)
             for msg in idle:
@@ -107,58 +100,8 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
                     for message_id, data in respo.items():
                         if (b'RFC822' in data):
                             msg = email.message_from_bytes(data[b'RFC822'],_class=EmailMessage,policy=policy.default)
-                            if (email.utils.parseaddr(msg['From'])[1] != achall.challb.chall.from_addr):
-                                continue
-                            if (msg['To'] != achall.domain):
-                                continue
-                            subject = msg['Subject']
-                            dkim_signature = msg.get('DKIM-Signature',None)
-                            from_addr = email.utils.parseaddr(msg['From'])[1]
-                            if (dkim_signature):
-                                if ('Authentication-Results' not in msg):
-                                    msg['Authentication-Results'] = 'dkim=pass' if dkim.verify(bytes(msg)) else 'dkim=nopass'
-                                if ('dkim=pass' not in msg['Authentication-Results'].lower()):
-                                    raise errors.AuthorizationError('DKIM signature is used but it does not pass the verification')
-                                dkim_tags = {}
-                                for d in dkim_signature.split(';'):
-                                    t = d.strip().split('=')
-                                    dkim_tags[t[0]] = t[1]
-                                if ('h' not in dkim_tags):
-                                    raise errors.AuthorizationError('Bad DKIM signature header')
-                                if not set(dkim_h).issubset(set(dkim_tags['h'].split(':'))):
-                                    raise errors.AuthorizationError('Missing h fields in DKIM-Signature header')
-                                if (dkim_tags['d'].lower() != from_addr.split('@')[1]):
-                                    raise errors.AuthorizationError('From\'s email domain does not match DKIM d tag')
-                            elif (msg.get_content_subtype() == 'signed'):
-                                subjaltnames = None
-                                for att in msg.iter_attachments():
-                                    if (att.get_content_type() == 'application/pkcs7-signature'):
-                                        certs = pkcs7.load_der_pkcs7_certificates(att.get_content())
-                                        for cert in certs:
-                                            try:
-                                                ex = cert.extensions.get_extension_for_oid(ExtensionOID.BASIC_CONSTRAINTS)
-                                            except x509.ExtensionNotFound:
-                                                continue
-                                            if (not ex.value.ca):
-                                                try:
-                                                    ex = cert.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME)
-                                                except x509.ExtensionNotFound:
-                                                    continue
-                                                subjaltnames = ex.value.get_values_for_type(x509.RFC822Name)
-                                                break
-                                if (not subjaltnames):
-                                    raise errors.AuthorizationError('S/MIME signature is used but no subjAltNames were found in its certificate')
-                                if (from_addr not in subjaltnames):
-                                    raise errors.AuthorizationError('S/MIME signature is used but no From is not in subjAltNames')
-                            if (subject.startswith('ACME: ')):
-                                
-                                token64 = subject.split(' ')[-1]
-                                token1 = jose.b64.b64decode(token64)
-                                full_token = token1+achall.chall.token
-
-                                # We reconstruct the ChallengeBody
-                                challt = messages.ChallengeBody.from_json({ 'type': 'email-reply-00', 'token': jose.b64.b64encode(bytes(full_token)).decode('ascii'), 'url': achall.challb.uri, 'status': achall.challb.status.to_json(), 'from': achall.challb.chall.from_addr })
-                                response, validation = challt.response_and_validation(achall.account_key)
+                            try:
+                                response,body = castle.utils.ProcessEmailChallenge(msg, achall)
                                 if ('Reply-To' in msg):
                                     to = msg['Reply-To']
                                 else:
@@ -167,18 +110,17 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
                                 message = 'From: {}\n'.format(me)
                                 message += 'To: {}\n'.format(to)
                                 message += 'In-Reply-To: {}\n'.format(msg['Message-ID'])
-                                message += 'Subject: Re: {}\n\n'.format(subject)
-                                digest = hashes.Hash(hashes.SHA256())
-                                digest.update(validation.encode())
-                                thumbprint = jose.b64encode(digest.finalize()).decode()
-                                message += '-----BEGIN ACME RESPONSE-----\n{}\n-----END ACME RESPONSE-----\n'.format(thumbprint)
+                                message += 'Subject: Re: {}\n\n'.format(msg['Subject'])
+                                message += body
                                 self.smtp.sendmail(me,to,message)
                                 
                                 self.imap.add_flags(message_id,imapclient.SEEN)
                                 self.imap.add_flags(message_id,imapclient.DELETED)
                                 display_util.notification('The ACME response has been sent successfully!',pause=False)
-                                stop = True
-            if (stop):
+                                sent = True
+                            except castle.exception.Error as e:
+                                raise errors.AuthorizationError(e.message)
+            if (sent):
                 break
         return response
 
