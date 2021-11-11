@@ -55,13 +55,13 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
             time.sleep(10)
             self.outlook = client.GetActiveObject('Outlook.Application')
         self.mapi = self.outlook.GetNamespace("MAPI")
-        self.store = None
-        for store in self.mapi.Stores:
-            if (str(store) == self.conf('account')):
-                self.store = store
+        self.account = None
+        for account in self.mapi.Folders:
+            if (account.Name == self.conf('account')):
+                self.account = account
                 break
-        if (not self.store):
-            raise errors.AuthorizationError('Cannot found the account {}'.format(self.conf('account')))
+        if (not self.account):
+            raise errors.AuthorizationError('Account {} does not exist'.format(self.conf('account')))
         
     def get_chall_pref(self, domain):
         # pylint: disable=unused-argument,missing-function-docstring
@@ -75,28 +75,22 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
         
         text = 'A challenge request for S/MIME certificate has been sent. In few minutes, ACME server will send a challenge e-mail to requested recipient {}. You do not need to take ANY action, as it will be replied automatically.'.format(achall.domain)
         display_util.notification(text,pause=False)
-        inbox = self.store.GetDefaultFolder(6)
+        inbox = self.account.Folders[self.mapi.GetDefaultFolder(6).Name]
         sent = False
         for i in range(60):
-            unread = inbox.UnReadItemCount
-            if (unread > 0):
-                for message in inbox.Items.Restrict("@SQL=""http://schemas.microsoft.com/mapi/proptag/0x0C1F001F"" = '"+achall.challb.chall.from_addr+"' "):
-                    if message.Unread:
-                        unread -= 1
-                        msg = email.message_from_string(message.PropertyAccessor.GetProperty("http://schemas.microsoft.com/mapi/proptag/0x007D001F")+message.Body,_class=EmailMessage,policy=policy.default)
-                        try:
-                            response,body = castle.utils.ProcessEmailChallenge(msg, achall)
-                            reply = message.Reply()
-                            reply.Body = body
-                            reply.Send()
-                            sent = True
-                            message.Unread = False
-                            message.Delete()
-                        except castle.exception.Error as e:
-                            raise errors.AuthorizationError(e.message)
+            for message in inbox.Items.Restrict("@SQL=""http://schemas.microsoft.com/mapi/proptag/0x0C1F001F"" = '"+achall.challb.chall.from_addr+"' "):
+                msg = email.message_from_string(message.PropertyAccessor.GetProperty("http://schemas.microsoft.com/mapi/proptag/0x007D001F")+message.Body,_class=EmailMessage,policy=policy.default)
+                try:
+                    response,body = castle.utils.ProcessEmailChallenge(msg, achall)
+                    reply = message.Reply()
+                    reply.Body = body
+                    reply.Send()
+                    sent = True
+                    #message.Unread = False
+                    message.Delete()
+                except castle.exception.Error as e:
+                    raise errors.AuthorizationError(e.message)
 
-                    if (unread == 0):
-                        break
             if (sent):
                 break
             time.sleep(1)
