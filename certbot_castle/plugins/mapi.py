@@ -48,12 +48,7 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
                "It uses the a MAPI client already configured (e.g., Outlook)")
 
     def prepare(self):  # pylint: disable=missing-function-docstring
-        try:
-            self.outlook = client.GetActiveObject('Outlook.Application')
-        except pywintypes.com_error:
-            os.startfile('outlook')
-            time.sleep(10)
-            self.outlook = client.GetActiveObject('Outlook.Application')
+        self.outlook = client.GetActiveObject('Outlook.Application')
         self.mapi = self.outlook.GetNamespace("MAPI")
         self.account = None
         for account in self.mapi.Folders:
