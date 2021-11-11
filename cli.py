@@ -74,6 +74,9 @@ def request_cert(args, config):
         cli_args.extend(['--castle-imap-smtp-host',args.smtp_host])
         if (args.smtp_port):
             cli_args.extend(['--castle-imap-smtp-port',args.smtp_port])
+    elif (args.outlook):
+        cli_args.extend(['-a','castle-mapi'])
+        cli_args.extend(['--castle-mapi-account',args.outlook_account])
     else:
         cli_args.extend(['-a','castle-interactive'])
     cli_args.extend(['-i','castle-installer'])
@@ -224,6 +227,9 @@ def parse_args():
     parser.add_argument('--cert-path',help='Path where certificate is located',required='revoke' in sys.argv)
     parser.add_argument('--reason',help='Reason of revocation',choices=['unspecified','keycompromise','affiliationchanged','superseded','cessationofoperation'])
     parser.add_argument('--key-path',help='Path of private key location, only if account key is missing')
+    
+    parser.add_argument('--outlook', help='Uses MAPI (Outlook) Authenticator for automatic reply', action='store_true')
+    parser.add_argument('--outlook-account', help='Outlook account where the challenge is processed', required='--outlook' in sys.argv)
 
     args = parser.parse_args()
     process_args(args)

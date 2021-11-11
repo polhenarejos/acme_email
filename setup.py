@@ -55,6 +55,7 @@ setup(
             'castle-interactive = certbot_castle.plugins.interactive:Authenticator',
             'castle-installer = certbot_castle.plugins.installer:Installer',
             'castle-imap = certbot_castle.plugins.imap:Authenticator',
+            'castle-mapi = certbot_castle.plugins.mapi:Authenticator'
         ],
     },
 )
