@@ -48,7 +48,8 @@ setup(
         'zope.interface',
         'imapclient',
         'dkimpy',
-        'pywin32'
+        'pywin32',
+        'cryptography>=3.3'
     ],
     include_package_data=True,
     entry_points={
