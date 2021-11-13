@@ -47,7 +47,12 @@ def prepare_config(cli_args):
     zope.component.provideUtility(config, interfaces.IConfig)
     return config,plugins
 
+def root_cert_advise():
+    text = 'You are requesting a S/MIME certificate to CASTLE ACME server. Remember to add the root certificate into your trust store for proper operation.'
+    display_util.notification(text,pause=False)
+
 def request_cert(args, config):
+    root_cert_advise()
     key, csr = csr_util.prepare(args.email, config, usage=args.usage)
     ## Reparse for including --csr arguments
     cli_args = prepare_cli_args(args)
