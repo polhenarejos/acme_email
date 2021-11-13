@@ -10,8 +10,6 @@ import logging
 import abc
 import time
 import email
-import os
-import pywintypes
 
 from certbot_castle.plugins import castle
 
