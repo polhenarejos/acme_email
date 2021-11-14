@@ -95,7 +95,6 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
             for msg in idle:
                 uid, state = msg
                 if state == b'EXISTS':
-                    self.imap.idle_done()
                     respo = self.imap.fetch(uid, ['RFC822'])
                     for message_id, data in respo.items():
                         if (b'RFC822' in data):
@@ -125,8 +124,8 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
         return response
 
     def cleanup(self, achalls):  # pylint: disable=missing-function-docstring
-        #self.imap.idle_done()
         try:
+            self.imap.idle_done()
             self.imap.logout()
         except imaplib.IMAP4.abort:
             pass
