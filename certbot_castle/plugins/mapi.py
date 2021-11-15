@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMeta):
 
-    description = "Automatic S/MIME challenge by using IMAP integration"
+    description = "Automatic S/MIME challenge by using MAPI/Outlook integration"
 
     def __init__(self, *args, **kwargs):
         super(Authenticator, self).__init__(*args, **kwargs)
