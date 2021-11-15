@@ -1,7 +1,7 @@
 # ACME Email S/MIME Client
 ACME Email Client for **EmailReply-00 Challenge** to obtain S/MIME certificate.
 
-Let's Encrypt ACME for retrieving HTTPS certificates are widely used and it defined a standard by obtaining certificates in an automatized way. ACME Email S/MIME client aims at performing the same protocol but for S/MIME certification. It is based on RFC 8823 *[Extensions to Automatic Certificate Management Environment for End-User S/MIME Certificates](https://datatracker.ietf.org/doc/html/rfc8823 "Extensions to Automatic Certificate Management Environment for End-User S/MIME Certificates")*, which is an extension to the ACME protocol [[RFC 8555](https://tools.ietf.org/html/rfc8555 "RFC 8555")].
+ACME Email S/MIME client aims at performing the ACME Email Challenge for S/MIME certification. It is based on RFC 8823 *[Extensions to Automatic Certificate Management Environment for End-User S/MIME Certificates](https://datatracker.ietf.org/doc/html/rfc8823 "Extensions to Automatic Certificate Management Environment for End-User S/MIME Certificates")*, which is an extension to the ACME protocol [[RFC 8555](https://tools.ietf.org/html/rfc8555 "RFC 8555")].
 
 With [CASTLE Platform® ACME Server](https://acme.castle.cloud/ "CASTLE Platform® ACME Server"), ACME Email S/MIME Client can obtain S/MIME certificates by using Certbot. With S/MIME certificates, e-mails, pdf, docx, etc. can be signed to proof the integrity of the source and authorship. Despite other platforms that require to pay for obtaining these certificates, [CASTLE Platform® ACME Server](https://acme.castle.cloud/ "CASTLE Platform® ACME Server") offers it **by free**.
 
@@ -19,7 +19,7 @@ It is preferably to create a Virtual Environment and install the package as foll
     source venv/bin/activate
     pip3 install .
     
-It will install all dependancies and required packages. With the virtual environment activated, you can continue using the client `cli.py`.
+It will install all dependencies and required packages. With the virtual environment activated, you can continue using the client `cli.py`.
              
 ## How to use it
 ACME E-mail S/MIME client uses the Certbot framework for managing ACME protocols. However, the official software does not provide support for S/MIME certification. To circumvent this issue, we bypass some procedures (CSR -- Certificate Signature Request mainly) to acomplish standard specifications. `cli.py` performs all this stuff by generating CSR with the correct extension and executes Certbot with the correct parameters.
@@ -127,7 +127,7 @@ If everything goes well, the ACME server will grant your request and will issue 
 
 You can optionally protect the PKCS12 container with a passphrase. Since it contains your private key, **it is highly recommended** to protect the PKCS12 container with a strong passphrase. The client will prompt you for a passphrase before generating the PKCS12, if no `--pasphrase` is specified. If you aim at authomatizing the whole process, use the flag `--passphrase <the_passphrase>` to specify the secret passphrase.
 
-#### Using MAPI/Outlook authenticator
+#### Using MAPI/Outlook authenticator
 MAPI authenticator allows to reply automatically the ACME Email Challenge without user interaction. The authenticator is able to manage the Outlook email client, previously configured, to receive, process and reply the challenge.
 
 How to use:
