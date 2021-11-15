@@ -80,7 +80,7 @@ To use it:
                             Path where certificate is located
       --reason {unspecified,keycompromise,affiliationchanged,superseded,cessationofoperation}
                             Reason of revocation
-      --key-path KEY_PATH   Path of private key location, only if account key is missing
+      --key-path KEY_PATH   Path of private key location
       --outlook             Uses MAPI (Outlook) Authenticator for automatic reply
       --outlook-account OUTLOOK_ACCOUNT
                             Outlook account where the challenge is processed		    
@@ -104,6 +104,8 @@ The client can specify multiple usages in a single certificate vía `--usage` fl
 If no `--usage` flag is specified, the ACME server will issue a certificate with `digitalSignature`, `contentCommitment` and `keyEncipherment` by default.
 
 No other extension are allowed in the CSR. Any CSR with extensions different from `keyUsage` and `subjectAltNames` will be rejected.
+
+If `--key-path` is used for `cert` command, the new certificate will contain the same public key corresponding to the specified private key. This is useful for renewals with the same public key.
 
 ### Example
 
@@ -172,6 +174,7 @@ _(Reminder: private and public keys are generated automatically, you do not have
 * MAPI/Outlook support for automated ACME replies.
 * DKIM and S/MIME checks for message authentication.
 * Multiple email addresses in a single certificate.
+* Reusable private key (and public) for multiple certificates.
 * Staging ACME server for test environments.
 * Supports an interactive text UI, or can be driven entirely from the command line.
 * Free and Open Source Software, made with Python.
