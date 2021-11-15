@@ -53,7 +53,7 @@ def root_cert_advise():
 
 def request_cert(args, config):
     root_cert_advise()
-    key, csr = csr_util.prepare(args.email, config, usage=args.usage)
+    key, csr = csr_util.prepare(args.email, config, key_path=args.key_path, usage=args.usage)
     ## Reparse for including --csr arguments
     cli_args = prepare_cli_args(args)
     if (args.dry_run):    
@@ -231,7 +231,7 @@ def parse_args():
 
     parser.add_argument('--cert-path',help='Path where certificate is located',required='revoke' in sys.argv)
     parser.add_argument('--reason',help='Reason of revocation',choices=['unspecified','keycompromise','affiliationchanged','superseded','cessationofoperation'])
-    parser.add_argument('--key-path',help='Path of private key location, only if account key is missing')
+    parser.add_argument('--key-path',help='Path of private key location')
     
     parser.add_argument('--outlook', help='Uses MAPI (Outlook) Authenticator for automatic reply', action='store_true')
     parser.add_argument('--outlook-account', help='Outlook account where the challenge is processed', required='--outlook' in sys.argv)

@@ -62,7 +62,13 @@ def init_save_csr(privkey, email, config, usage):
     logger.debug("Creating CSR: %s", csr_filename)
     return util.CSR(csr_filename, csr_pem, "pem")
 
-def prepare(emails, config, key=None, usage=None):
+def prepare(emails, config, key_path=None, usage=None):
+    if key_path is not None:
+        with open(key_path, "rb") as f:
+            keypem = f.read()
+        key = util.Key(file=key_path, pem=keypem)
+    else:
+        key = None
     if config.dry_run:
         key = key or util.Key(file=None, pem=crypto_util.make_key(config.rsa_key_size))
         ## CSR is always used, as it MUST send "email" identifier (dns by default)
