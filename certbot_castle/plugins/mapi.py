@@ -5,7 +5,11 @@ Created on Thu Nov 11 12:41:59 2021
 @author: Pol
 """
 
-import win32com.client as client
+from certbot import errors
+try:
+    import win32com.client as client
+except ModuleNotFoundError:
+    raise errors.AuthorizationError('MAPI Authenticator only runs in Windows')
 import logging
 import abc
 import time
@@ -19,7 +23,6 @@ logging.basicConfig(
 )
 
 from certbot import interfaces
-from certbot import errors
 from certbot.plugins import common
 from certbot.display import util as display_util
 
