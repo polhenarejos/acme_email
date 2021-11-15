@@ -75,6 +75,15 @@ To use it:
                             Passphrase to use for the PKCS12 generation. This passpharse will be used for private key encryption
       --usage {digitalSignature,contentCommitment,keyEncipherment,keyAgreement}
                             Key usage for certificate. Multiple usages can be specified
+			    
+      --cert-path CERT_PATH
+                            Path where certificate is located
+      --reason {unspecified,keycompromise,affiliationchanged,superseded,cessationofoperation}
+                            Reason of revocation
+      --key-path KEY_PATH   Path of private key location, only if account key is missing
+      --outlook             Uses MAPI (Outlook) Authenticator for automatic reply
+      --outlook-account OUTLOOK_ACCOUNT
+                            Outlook account where the challenge is processed		    
 	  
 Some of the parameters are shared by Certbot software, since it manages the protocol stack and data flow between the client and the ACME server. Sooner more parameters will be added.
 
@@ -118,6 +127,19 @@ If everything goes well, the ACME server will grant your request and will issue 
 
 You can optionally protect the PKCS12 container with a passphrase. Since it contains your private key, **it is highly recommended** to protect the PKCS12 container with a strong passphrase. The client will prompt you for a passphrase before generating the PKCS12, if no `--pasphrase` is specified. If you aim at authomatizing the whole process, use the flag `--passphrase <the_passphrase>` to specify the secret passphrase.
 
+#### Using MAPI/Outlook authenticator
+MAPI authenticator allows to reply automatically the ACME Email Challenge without user interaction. The authenticator is able to manage the Outlook email client, previously configured, to receive, process and reply the challenge.
+
+How to use:
+1. Open your Outlook client **with Administrator privileges** (right click on the Outlook client --> Execute with Administrator privileges)
+2. Select the Inbox of the account to challenge with. Ensure that the connection with you IMAP provider is properly configured.
+3. Execute the client `cli.py` with `--outlook` and `--outlook-account ACCOUNT` parameters, where `ACCOUNT` is the name of your Outlook account.
+
+For example:
+`python cli.py cert -e address@domain.com --outlook --outlook-account MyPersonalAccount`
+
+* Due to Certbot limitations, Outlook must run with Administrator rights.
+
 #### Using interactive authenticator
 **IMPORTANT: This method is not recommended, as it does not performs any authentication check (such as DKIM or S/MIME). These checks MUST be carried out by the user manually.**
 
@@ -147,6 +169,7 @@ _(Reminder: private and public keys are generated automatically, you do not have
 * Customizable key usage for the certificate: digitalSignature, keyEncipherment, contentCommitment and/or keyAgreement can be specified.
 * Fully automated or interactive.
 * IMAP and SMTP support for automated ACME replies.
+* MAPI/Outlook support for automated ACME replies.
 * DKIM and S/MIME checks for message authentication.
 * Multiple email addresses in a single certificate.
 * Staging ACME server for test environments.
@@ -165,6 +188,8 @@ The rest of the client is composed by three modules:
    2. Interactive: it requires user intervention by pasting the token, copying the ACME response and replying to the ACME server via e-mail. **This method is not recommended, as it does not performs any authentication check (such as DKIM or S/MIME). These checks MUST be carried out by the user manually.**
 2. Installation plugin: it generates the PKCS12 container with the private key and certificate.
 3. Challenges: it defines the EmailReply-00 challenge, described at RFC 8823. 
+
+Besides the `email` identifier, Certbot also does not allow missing `DNSName` in the Subject Alternative Names in the CSR. Due to this, we must add `RFC822Name` and `DNSName` in the CSR, both with the email to certify. 
 
 Thanks to this, we are able to write on our own code and leave the Certbot code unmodified. Of course, if in a future Certbot supports "email" Identifier Type and ACME S/MIME challenges, all this repository will be useless. In the meantime, you can use it.
 
