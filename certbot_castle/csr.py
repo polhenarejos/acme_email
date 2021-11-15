@@ -68,6 +68,6 @@ def prepare(emails, config, key=None, usage=None):
         ## CSR is always used, as it MUST send "email" identifier (dns by default)
         #csr = util.CSR(file=None, form="pem", data=make_csr(key.pem, emails))
     else:
-        key = key or crypto_util.init_save_key(config.rsa_key_size, config.key_dir)
+        key = key or crypto_util.generate_key(config.rsa_key_size, config.key_dir)
     csr = init_save_csr(key, emails, config, usage)
     return key,csr
