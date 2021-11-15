@@ -9,11 +9,12 @@ from certbot import errors
 try:
     import win32com.client as client
 except ModuleNotFoundError:
-    raise errors.AuthorizationError('MAPI Authenticator only runs in Windows')
+    pass
 import logging
 import abc
 import time
 import email
+import sys
 
 from certbot_castle.plugins import castle
 
@@ -38,6 +39,8 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
     description = "Automatic S/MIME challenge by using MAPI/Outlook integration"
 
     def __init__(self, *args, **kwargs):
+        if (not sys.platform.startswith('win32')):
+            raise errors.AuthorizationError('MAPI Authenticator only runs in Windows')
         super(Authenticator, self).__init__(*args, **kwargs)
 
     @classmethod
