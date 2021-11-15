@@ -1,7 +1,7 @@
 from setuptools import setup
 from setuptools import find_packages
 
-import re
+import re, sys
 VERSIONFILE = 'certbot_castle/_version.py'
 verstrline = open(VERSIONFILE, 'rt').read()
 VSRE = r"^__version__ = ['\"]([^'\"]*)['\"]"
@@ -10,6 +10,19 @@ if mo:
     version = mo.group(1)
 else:
     raise RuntimeError("Unable to find version string in %s." % (VERSIONFILE,))
+    
+INSTALL_REQUIRES = [
+    'certbot>=1.20.0',
+    'acme>=1.20.0',
+    'setuptools',
+    'zope.interface',
+    'imapclient',
+    'dkimpy',
+    'cryptography>=3.3'
+]
+
+if sys.platform.startswith('win32'):
+    INSTALL_REQUIRES.append("pywin32")
 
 setup(
     name='certbot-castle',
@@ -41,16 +54,7 @@ setup(
         'Topic :: System :: Systems Administration',
         'Topic :: Utilities',
     ],
-    install_requires=[
-        'certbot>=1.20.0',
-        'acme>=1.20.0',
-        'setuptools',
-        'zope.interface',
-        'imapclient',
-        'dkimpy',
-        'pywin32',
-        'cryptography>=3.3'
-    ],
+    install_requires=INSTALL_REQUIRES,
     include_package_data=True,
     entry_points={
         'certbot.plugins': [
