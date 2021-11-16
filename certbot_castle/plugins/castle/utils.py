@@ -11,7 +11,6 @@ from . import pkcs7
 from . import exception
 
 from acme import messages
-from certbot import errors
 
 from cryptography.hazmat.primitives import hashes 
 
@@ -28,6 +27,20 @@ class ReceiptAddressMismatch(exception.Error):
 class BadSubject(exception.Error):
     def __init__(self):
         super().__init__('Subject malformed')
+        
+def ChallengeFromSubject(subject, achall):
+    token64 = subject.split(' ')[-1]
+    token1 = jose.b64.b64decode(token64)
+    full_token = token1+achall.chall.token
+
+    # We reconstruct the ChallengeBody
+    challt = messages.ChallengeBody.from_json({ 'type': 'email-reply-00', 'token': jose.b64.b64encode(bytes(full_token)).decode('ascii'), 'url': achall.challb.uri, 'status': achall.challb.status.to_json(), 'from': achall.challb.chall.from_addr })
+    response, validation = challt.response_and_validation(achall.account_key)
+    
+    digest = hashes.Hash(hashes.SHA256())
+    digest.update(validation.encode())
+    thumbprint = jose.b64encode(digest.finalize()).decode()
+    return response,'-----BEGIN ACME RESPONSE-----\n{}\n-----END ACME RESPONSE-----\n'.format(thumbprint)
 
 def ProcessEmailChallenge(msg, achall):
     if (email.utils.parseaddr(msg['From'])[1] != achall.challb.chall.from_addr):
@@ -43,16 +56,5 @@ def ProcessEmailChallenge(msg, achall):
         pkcs7.ProcessPKCS7(msg, from_addr)
     if (not subject.startswith('ACME: ')):
         raise BadSubject
-    token64 = subject.split(' ')[-1]
-    token1 = jose.b64.b64decode(token64)
-    full_token = token1+achall.chall.token
-
-    # We reconstruct the ChallengeBody
-    challt = messages.ChallengeBody.from_json({ 'type': 'email-reply-00', 'token': jose.b64.b64encode(bytes(full_token)).decode('ascii'), 'url': achall.challb.uri, 'status': achall.challb.status.to_json(), 'from': achall.challb.chall.from_addr })
-    response, validation = challt.response_and_validation(achall.account_key)
-    
-    digest = hashes.Hash(hashes.SHA256())
-    digest.update(validation.encode())
-    thumbprint = jose.b64encode(digest.finalize()).decode()
-    return response,'-----BEGIN ACME RESPONSE-----\n{}\n-----END ACME RESPONSE-----\n'.format(thumbprint)
+    return ChallengeFromSubject(subject, achall)
         

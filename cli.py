@@ -82,6 +82,14 @@ def request_cert(args, config):
     elif (args.outlook):
         cli_args.extend(['-a','castle-mapi'])
         cli_args.extend(['--castle-mapi-account',args.outlook_account])
+    elif (args.tb):
+        cli_args.extend(['-a','castle-tb'])
+        if (args.tb_profile):
+            cli_args.extend(['--castle-tb-profile',args.tb_profile])
+        if (args.tb_unsafe):
+            cli_args.extend(['--castle-tb-unsafe',args.tb_unsafe])
+        if (args.tb_bin):
+            cli_args.extend(['--castle-tb-bin',args.tb_bin])
     else:
         cli_args.extend(['-a','castle-interactive'])
     cli_args.extend(['-i','castle-installer'])
@@ -235,6 +243,11 @@ def parse_args():
     
     parser.add_argument('--outlook', help='Uses MAPI (Outlook) Authenticator for automatic reply', action='store_true')
     parser.add_argument('--outlook-account', help='Outlook account where the challenge is processed', required='--outlook' in sys.argv)
+
+    parser.add_argument('--tb', help='Uses Thunderbird Authenticator for automatic reply', action='store_true')
+    parser.add_argument('--tb-unsafe', help='Run authenticator disabling security checks. USE WITH CAUTION.', action='store_true')
+    parser.add_argument('--tb-profile', help='Thunderbird profile where it runs')
+    parser.add_argument('--tb-bin', help='Thunderbird binary/executable path')
 
     args = parser.parse_args()
     process_args(args)
