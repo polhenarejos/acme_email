@@ -50,7 +50,7 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
 
     @classmethod
     def add_parser_arguments(cls, add):
-        add('unsafe',help='Run the authenticator without security checks')
+        add('unsafe',help='Run the authenticator without security checks',action='store_true')
         add('bin',help='Thunderbird binary/executable path')
         add('profile',help='Thunderbird profile path')
 

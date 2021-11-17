@@ -87,7 +87,7 @@ def request_cert(args, config):
         if (args.tb_profile):
             cli_args.extend(['--castle-tb-profile',args.tb_profile])
         if (args.tb_unsafe):
-            cli_args.extend(['--castle-tb-unsafe',args.tb_unsafe])
+            cli_args.extend(['--castle-tb-unsafe'])
         if (args.tb_bin):
             cli_args.extend(['--castle-tb-bin',args.tb_bin])
     else:
