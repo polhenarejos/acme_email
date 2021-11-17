@@ -91,8 +91,8 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
         text = 'A challenge request for S/MIME certificate has been sent. In few minutes, ACME server will send a challenge e-mail to requested recipient {}. You do not need to take ANY action, as it will be replied automatically.'.format(achall.domain)
         display_util.notification(text,pause=False)
         sent = False
-        for i in range(30):
-            idle_resp = self.imap.idle_check(timeout=10)
+        for i in range(60):
+            idle_resp = self.imap.idle_check(timeout=1)
             for msg in idle_resp:
                 self.__idle(False)
                 uid, state = msg
