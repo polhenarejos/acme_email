@@ -123,6 +123,8 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
                                 raise errors.AuthorizationError(e.message)
             if (sent):
                 break
+            else:
+                self.__idle(True) #no luck, we put the server in IDLE again
         return response
 
     def cleanup(self, achalls):  # pylint: disable=missing-function-docstring
