@@ -119,6 +119,8 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
                                 self.imap.add_flags(message_id,imapclient.DELETED)
                                 display_util.notification('The ACME response has been sent successfully!',pause=False)
                                 sent = True
+                            except castle.exception.FromAddressMismatch: #email not from challenge, continue
+                                continue
                             except castle.exception.Error as e:
                                 raise errors.AuthorizationError(e.message)
             if (sent):
