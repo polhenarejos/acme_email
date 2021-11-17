@@ -55,6 +55,8 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
         self.imap = imapclient.IMAPClient(self.conf('host'), port=self.conf('port'), use_uid=False, ssl=True if self.conf('ssl') else False)
         self.imap.login(self.conf('login'),self.conf('password'))
         self.imap.select_folder('INBOX')
+        if b'IDLE' not in self.imap.capabilities():
+            raise errors.AuthorizationError('IMAP server does not support IDLE. Cannot continue.')
         self.__idle(True)
         
         method = self.conf('smtp-method')
