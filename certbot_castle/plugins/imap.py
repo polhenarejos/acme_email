@@ -31,6 +31,7 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
 
     def __init__(self, *args, **kwargs):
         super(Authenticator, self).__init__(*args, **kwargs)
+        self.__in_idle = False
 
     @classmethod
     def add_parser_arguments(cls, add):
@@ -54,7 +55,7 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
         self.imap = imapclient.IMAPClient(self.conf('host'), port=self.conf('port'), use_uid=False, ssl=True if self.conf('ssl') else False)
         self.imap.login(self.conf('login'),self.conf('password'))
         self.imap.select_folder('INBOX')
-        self.imap.idle()
+        self.__idle(True)
         
         method = self.conf('smtp-method')
         smtp_server = self.conf('smtp-host') if self.conf('smtp-host') else self.conf('host')
@@ -91,8 +92,9 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
         display_util.notification(text,pause=False)
         sent = False
         for i in range(30):
-            idle = self.imap.idle_check(timeout=10)
-            for msg in idle:
+            idle_resp = self.imap.idle_check(timeout=10)
+            for msg in idle_resp:
+                self.__idle(False)
                 uid, state = msg
                 if state == b'EXISTS':
                     respo = self.imap.fetch(uid, ['RFC822'])
@@ -124,9 +126,16 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
         return response
 
     def cleanup(self, achalls):  # pylint: disable=missing-function-docstring
-        try:
-            self.imap.idle_done()
-            self.imap.logout()
-        except imaplib.IMAP4.abort:
-            pass
+        self.__idle(False)
+        self.imap.logout()
         self.smtp.quit()
+        
+    def __idle(self,on):
+        if (on == True):
+            if (not self.__in_idle):
+                self.imap.idle()
+            self.__in_idle = True
+        else:
+            if (self.__in_idle):
+                self.imap.idle_done()
+            self.__in_idle = False
