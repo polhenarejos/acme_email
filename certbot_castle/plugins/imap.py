@@ -132,9 +132,12 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
         return response
 
     def cleanup(self, achalls):  # pylint: disable=missing-function-docstring
-        self.__idle(False)
-        self.imap.logout()
-        self.smtp.quit()
+        try:
+            self.__idle(False)
+            self.imap.logout()
+            self.smtp.quit()
+        except imaplib.IMAP4.abort:
+            pass
         
     def __idle(self,on):
         if (on == True):
