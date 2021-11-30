@@ -17,8 +17,9 @@ from certbot import interfaces
 from certbot.compat import misc
 
 from certbot_castle import csr as csr_util
+from certbot_castle.utils import get_root_ca_certs
 
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.serialization import pkcs12, Encoding
 
 logger = logging.getLogger(__name__)   
@@ -48,8 +49,16 @@ def prepare_config(cli_args):
     return config,plugins
 
 def root_cert_advise():
-    text = 'You are requesting a S/MIME certificate to CASTLE ACME server. Remember to add the root certificate into your trust store for proper operation.'
-    display_util.notification(text,pause=False)
+    root_certs = get_root_ca_certs()
+    castle_fingerprints = [
+        '1845b9560b38a0ac11494f4cf2b2f372a1a398e11439066ca2734ecc86d67c0e',
+        '92966a8d8fbc35cafa320fcf32f805dc7be483e95615df258b8d38eace0cfbb9',
+    ]
+    fingerprints = list(map(lambda a: a.fingerprint(hashes.SHA256()).hex(), root_certs))
+    matches = sum(e in fingerprints for e in castle_fingerprints)
+    if (matches == 0):
+        text = 'You are requesting a S/MIME certificate to CASTLE ACME server. Remember to add the root certificate into your trust store for proper operation.'
+        display_util.notification(text,pause=False)
 
 def request_cert(args, config):
     root_cert_advise()
