@@ -28,6 +28,15 @@ logger = logging.getLogger(__name__)
 class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMeta):
 
     description = "Automatic S/MIME challenge by using IMAP integration"
+    __in_idle = False
+    
+    def __set_idle(self, mode):
+        if (mode == True and self.__in_idle == False):
+            self.imap.idle()
+            self.__in_idle = True
+        elif (mode == False and self.__in_idle == True):
+            self.imap.idle_done()
+            self.__in_idle = False
 
     def __init__(self, *args, **kwargs):
         super(Authenticator, self).__init__(*args, **kwargs)
@@ -54,7 +63,7 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
         self.imap = imapclient.IMAPClient(self.conf('host'), port=self.conf('port'), use_uid=False, ssl=True if self.conf('ssl') else False)
         self.imap.login(self.conf('login'),self.conf('password'))
         self.imap.select_folder('INBOX')
-        self.imap.idle()
+        self.__set_idle(True)
         
         method = self.conf('smtp-method')
         smtp_server = self.conf('smtp-host') if self.conf('smtp-host') else self.conf('host')
@@ -89,12 +98,12 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
         
         text = 'A challenge request for S/MIME certificate has been sent. In few minutes, ACME server will send a challenge e-mail to requested recipient {}. You do not need to take ANY action, as it will be replied automatically.'.format(achall.domain)
         display_util.notification(text,pause=False)
-        sent = False
         for i in range(30):
             idle = self.imap.idle_check(timeout=10)
             for msg in idle:
                 uid, state = msg
                 if state == b'EXISTS':
+                    self.__set_idle(False)
                     respo = self.imap.fetch(uid, ['RFC822'])
                     for message_id, data in respo.items():
                         if (b'RFC822' in data):
@@ -116,16 +125,17 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
                                 self.imap.add_flags(message_id,imapclient.SEEN)
                                 self.imap.add_flags(message_id,imapclient.DELETED)
                                 display_util.notification('The ACME response has been sent successfully!',pause=False)
-                                sent = True
+                                return response
+                            except castle.exception.BadSubject: #Not an ACME email
+                                pass
                             except castle.exception.Error as e:
                                 raise errors.AuthorizationError(e.message)
-            if (sent):
-                break
+                    self.__set_idle(True)
         return response
 
     def cleanup(self, achalls):  # pylint: disable=missing-function-docstring
         try:
-            self.imap.idle_done()
+            self.__set_idle(False)
             self.imap.logout()
         except imaplib.IMAP4.abort:
             pass
