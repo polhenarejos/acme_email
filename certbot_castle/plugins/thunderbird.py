@@ -133,6 +133,8 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
                                             msg = email.message_from_string(str(mmsg))
                                             try:
                                                 response,body = castle.utils.ProcessEmailChallenge(msg, achall)
+                                            except castle.exception.BadSubject: #Not an ACME email
+                                                pass
                                             except castle.exception.Error as e:
                                                 raise errors.AuthorizationError(e.message)
                                             found = True

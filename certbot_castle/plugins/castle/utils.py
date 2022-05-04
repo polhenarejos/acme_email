@@ -43,18 +43,18 @@ def ChallengeFromSubject(subject, achall):
     return response,'-----BEGIN ACME RESPONSE-----\n{}\n-----END ACME RESPONSE-----\n'.format(thumbprint)
 
 def ProcessEmailChallenge(msg, achall):
+    subject = msg['Subject']
+    if (not subject.startswith('ACME: ')):
+        raise BadSubject
     if (email.utils.parseaddr(msg['From'])[1] != achall.challb.chall.from_addr):
         raise FromAddressMismatch
     if (msg['To'] != achall.domain):
         raise ReceiptAddressMismatch
-    subject = msg['Subject']
     from_addr = email.utils.parseaddr(msg['From'])[1]
 
     if (msg.get('DKIM-Signature',None)):
         dkim.ProcessDKIM(msg, from_addr)
     elif (msg.get_content_subtype() == 'signed'):
         pkcs7.ProcessPKCS7(msg, from_addr)
-    if (not subject.startswith('ACME: ')):
-        raise BadSubject
     return ChallengeFromSubject(subject, achall)
         
