@@ -10,12 +10,11 @@ if mo:
     version = mo.group(1)
 else:
     raise RuntimeError("Unable to find version string in %s." % (VERSIONFILE,))
-    
+
 INSTALL_REQUIRES = [
     'certbot>=1.20.0',
     'acme>=1.20.0',
     'setuptools',
-    'zope.interface',
     'imapclient',
     'dkimpy',
     'cryptography>=3.3',
