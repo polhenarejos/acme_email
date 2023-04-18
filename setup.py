@@ -18,7 +18,8 @@ INSTALL_REQUIRES = [
     'zope.interface',
     'imapclient',
     'dkimpy',
-    'cryptography>=3.3'
+    'cryptography>=3.3',
+    'psutil'
 ]
 
 if sys.platform.startswith('win32'):
@@ -61,7 +62,8 @@ setup(
             'castle-interactive = certbot_castle.plugins.interactive:Authenticator',
             'castle-installer = certbot_castle.plugins.installer:Installer',
             'castle-imap = certbot_castle.plugins.imap:Authenticator',
-            'castle-mapi = certbot_castle.plugins.mapi:Authenticator'
+            'castle-mapi = certbot_castle.plugins.mapi:Authenticator',
+            'castle-tb = certbot_castle.plugins.thunderbird:Authenticator'
         ],
     },
 )

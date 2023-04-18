@@ -11,7 +11,6 @@ from . import pkcs7
 from . import exception
 
 from acme import messages
-from certbot import errors
 
 from cryptography.hazmat.primitives import hashes 
 
@@ -28,21 +27,8 @@ class ReceiptAddressMismatch(exception.Error):
 class BadSubject(exception.Error):
     def __init__(self):
         super().__init__('Subject malformed')
-
-def ProcessEmailChallenge(msg, achall):
-    if (email.utils.parseaddr(msg['From'])[1] != achall.challb.chall.from_addr):
-        raise FromAddressMismatch
-    if (msg['To'] != achall.domain):
-        raise ReceiptAddressMismatch
-    subject = msg['Subject']
-    from_addr = email.utils.parseaddr(msg['From'])[1]
-
-    if (msg.get('DKIM-Signature',None)):
-        dkim.ProcessDKIM(msg, from_addr)
-    elif (msg.get_content_subtype() == 'signed'):
-        pkcs7.ProcessPKCS7(msg, from_addr)
-    if (not subject.startswith('ACME: ')):
-        raise BadSubject
+        
+def ChallengeFromSubject(subject, achall):
     token64 = subject.split(' ')[-1]
     token1 = jose.b64.b64decode(token64)
     full_token = token1+achall.chall.token
@@ -55,4 +41,20 @@ def ProcessEmailChallenge(msg, achall):
     digest.update(validation.encode())
     thumbprint = jose.b64encode(digest.finalize()).decode()
     return response,'-----BEGIN ACME RESPONSE-----\n{}\n-----END ACME RESPONSE-----\n'.format(thumbprint)
+
+def ProcessEmailChallenge(msg, achall):
+    subject = msg['Subject']
+    if (not subject.startswith('ACME: ')):
+        raise BadSubject
+    if (email.utils.parseaddr(msg['From'])[1] != achall.challb.chall.from_addr):
+        raise FromAddressMismatch
+    if (msg['To'] != achall.domain):
+        raise ReceiptAddressMismatch
+    from_addr = email.utils.parseaddr(msg['From'])[1]
+
+    if (msg.get('DKIM-Signature',None)):
+        dkim.ProcessDKIM(msg, from_addr)
+    elif (msg.get_content_subtype() == 'signed'):
+        pkcs7.ProcessPKCS7(msg, from_addr)
+    return ChallengeFromSubject(subject, achall)
         

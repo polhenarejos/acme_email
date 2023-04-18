@@ -28,6 +28,15 @@ logger = logging.getLogger(__name__)
 class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMeta):
 
     description = "Automatic S/MIME challenge by using IMAP integration"
+    __in_idle = False
+    
+    def __set_idle(self, mode):
+        if (mode == True and self.__in_idle == False):
+            self.imap.idle()
+            self.__in_idle = True
+        elif (mode == False and self.__in_idle == True):
+            self.imap.idle_done()
+            self.__in_idle = False
 
     def __init__(self, *args, **kwargs):
         super(Authenticator, self).__init__(*args, **kwargs)
@@ -99,6 +108,7 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
                 self.__idle(False)
                 uid, state = msg
                 if state == b'EXISTS':
+                    self.__set_idle(False)
                     respo = self.imap.fetch(uid, ['RFC822'])
                     for message_id, data in respo.items():
                         if (b'RFC822' in data):

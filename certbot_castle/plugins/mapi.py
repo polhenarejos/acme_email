@@ -75,7 +75,6 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
         text = 'A challenge request for S/MIME certificate has been sent. In few minutes, ACME server will send a challenge e-mail to requested recipient {}. You do not need to take ANY action, as it will be replied automatically.'.format(achall.domain)
         display_util.notification(text,pause=False)
         inbox = self.account.Folders.Item(self.mapi.GetDefaultFolder(6).Name)
-        sent = False
         for i in range(60):
             for message in inbox.Items.Restrict("@SQL=""http://schemas.microsoft.com/mapi/proptag/0x0C1F001F"" = '"+achall.challb.chall.from_addr+"' "):
                 msg = email.message_from_string(message.PropertyAccessor.GetProperty("http://schemas.microsoft.com/mapi/proptag/0x007D001F")+message.Body,_class=EmailMessage,policy=policy.default)
@@ -87,15 +86,14 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
                     sent = True
                     #message.Unread = False
                     message.Delete()
+                    return response
+                except castle.exception.BadSubject: #Not an ACME email
+                    pass
                 except castle.exception.Error as e:
                     raise errors.AuthorizationError(e.message)
-
-            if (sent):
-                break
             time.sleep(1)
         return response
 
     def cleanup(self, achalls):  # pylint: disable=missing-function-docstring
-        #self.imap.idle_done()
         #self.outlook.Quit()
         pass
