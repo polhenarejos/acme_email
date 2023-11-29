@@ -103,7 +103,8 @@ def request_cert(args, config):
         cli_args.extend(['--castle-installer-no-passphrase'])
     elif (args.passphrase):
         cli_args.extend(['--castle-installer-passphrase',args.passphrase])
-    cli_args.extend(['-m',args.contact])
+    if (args.contact):
+        cli_args.extend(['-m',args.contact])
     if (args.agree_tos):
         cli_args.extend(['--agree-tos'])
     config,plugins = prepare_config(cli_args)
