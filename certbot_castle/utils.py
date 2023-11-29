@@ -15,14 +15,17 @@ import subprocess
 
 def get_root_ca_certs(linux_certs_dir_path='/etc/ssl/certs'):
     system = platform.system().lower()
-    
+
     #https://stackoverflow.com/a/64445061/4260911
     if system == 'windows':
         items = ssl.enum_certificates("root")
         for cert_bytes, encoding, is_trusted in items:
             if encoding == "x509_asn":
-                cert = x509.load_der_x509_certificate(cert_bytes)
-                yield cert
+                try:
+                    cert = x509.load_der_x509_certificate(cert_bytes)
+                    yield cert
+                except ValueError:
+                    pass
 
     elif system == 'linux':
         certs_file_names = os.listdir(linux_certs_dir_path)
@@ -33,9 +36,12 @@ def get_root_ca_certs(linux_certs_dir_path='/etc/ssl/certs'):
 
             with open(cert_file_path, 'rb') as f:
                 cert_pem = f.read()
-                cert = x509.load_pem_x509_certificate(cert_pem)
-                yield cert
-                
+                try:
+                    cert = x509.load_pem_x509_certificate(cert_pem)
+                    yield cert
+                except ValueError:
+                    pass
+
     elif system == 'darwin':
         keychains = [
               '/Library/Keychains/System.keychain',
@@ -45,8 +51,11 @@ def get_root_ca_certs(linux_certs_dir_path='/etc/ssl/certs'):
         res = proc.stdout.read()
         root_certs = list(filter(lambda a: a!=b'\n' and a!=b'', re.split(b'(-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----)', res, flags=re.MULTILINE | re.DOTALL)))
         for cert_pem in root_certs:
-            cert = x509.load_pem_x509_certificate(cert_pem)
-            yield cert
+            try:
+                cert = x509.load_pem_x509_certificate(cert_pem)
+                yield cert
+            except ValueError:
+                pass
 
     else:
         raise NotImplemented(f'missing implementation for this operating system="{system}"')
