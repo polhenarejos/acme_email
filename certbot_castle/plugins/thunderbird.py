@@ -17,7 +17,6 @@ import sys
 import re
 from urllib.parse import urlparse, unquote
 import mailbox
-import psutil
 import subprocess
 
 from certbot_castle.plugins import castle
@@ -80,16 +79,16 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
         except FileNotFoundError:
             if not self.conf('unsafe'):
                 raise errors.AuthorizationError('No pref file found. You may use --tb-unsafe but be aware that no security checks will be performed. USE IT AT YOUR OWN RISK.')
-        
+
         db_path = profile+'/global-messages-db.sqlite'
         try:
             self.con = sqlite3.connect(db_path)
             self.cursor = self.con.cursor()
             self.cursor.execute("SELECT * FROM messagesText_content ORDER BY docid DESC LIMIT 1")
             self.cursor.fetchone()
-        except sqlite3.OperationalError: 
+        except sqlite3.OperationalError:
             raise errors.AuthorizationError('It is not possible to connect to Thunderbird database.')
-        
+
     def get_chall_pref(self, domain):
         # pylint: disable=unused-argument,missing-function-docstring
         return [challenge.EmailReply00]
@@ -99,7 +98,7 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
 
     def _perform_emailreply00(self, achall):
         response, _ = achall.challb.response_and_validation(achall.account_key)
-        
+
         text = 'A challenge request for S/MIME certificate has been sent. In few minutes, ACME server will send a challenge e-mail to requested recipient {}. Once ready, a reply will pop-up. Just click on Send.'.format(achall.domain)
         display_util.notification(text,pause=False)
         body = None
@@ -145,7 +144,7 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
                                 else:
                                     if not self.conf('unsafe'):
                                         raise errors.AuthorizationError('No INBOX file found. You may use --tb-unsafe but be aware that no security checks will be performed. USE IT AT YOUR OWN RISK.')
-                                
+
                             if (found):
                                 break
                         if (not found):
@@ -160,7 +159,7 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
                 if (not body): #tb-unsafe to get this point
                     if not self.conf('unsafe'): #rarely will raise
                         raise errors.AuthorizationError('Cannot create reply message. You may use --tb-unsafe but be aware that no security checks will be performed. USE IT AT YOUR OWN RISK.')
-                
+
                     response,body = castle.utils.ChallengeFromSubject(res_content[2], achall)
                 body = body.replace('\r','%0D')
                 body = body.replace('\n','%0A')
@@ -202,18 +201,19 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
                     except TypeError:
                         pass
         return r
-    
+
     def __tb_bin(self):
         if (self.conf('bin')):
             return self.conf('bin')
-        
+
+        import psutil
         tb_bin = None
         for p in psutil.process_iter():
             if ('thunderbird' in p.name()):
                 tb_bin = p.exe()
-                
+
         if (not tb_bin):
             raise errors.AuthorizationError('Cannot find Thunderbird binary/executable. Use --tb-bin to provide the path.')
 
         return tb_bin
-    
+
