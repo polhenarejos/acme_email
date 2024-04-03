@@ -41,8 +41,7 @@ def prepare_cli_args(args):
 
 def prepare_config(cli_args):
     plugins = plugins_disco.PluginsRegistry.find_all()
-    cargs = cli.prepare_and_parse_args(plugins, cli_args)
-    config = configuration.NamespaceConfig(cargs)
+    config = cli.prepare_and_parse_args(plugins, cli_args)
     return config,plugins
 
 def root_cert_advise():
