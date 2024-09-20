@@ -16,9 +16,15 @@
                 "--contact",
                 "noc@vpo.nl",
                 "-e",
-                "t.vanderzwaan@vpo.nl",
+                "info@containit.nl",
                 "--file-validate",
-                "-t"
+                "--config-dir",
+                "~/certbot/",
+                "--work-dir",
+                "~/certbot/work",
+                "--logs-dir",
+                "~/certbot/logs",
+                "--no-passphrase"
             ],
             "justMyCode": false
         }
