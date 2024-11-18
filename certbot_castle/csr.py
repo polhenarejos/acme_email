@@ -1,6 +1,7 @@
 from certbot import util
 from certbot import crypto_util
 from certbot.compat import os
+from certbot._internal import constants
 
 import re, logging
 
@@ -9,7 +10,7 @@ from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes
 
-logger = logging.getLogger(__name__)   
+logger = logging.getLogger(__name__)
 
 def is_email(domain_name):
     REGEX = r'^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$'
@@ -37,14 +38,14 @@ def make(pkey_pem, emails, usage):
         key_agreement = 'keyAgreement' in usage
         csr = csr.add_extension(
                 x509.KeyUsage(
-                    digital_signature=digital_signature, 
-                    content_commitment=content_commitment, 
-                    key_encipherment=key_encipherment, 
-                    data_encipherment=data_encipherment, 
-                    key_agreement=key_agreement, 
-                    key_cert_sign=key_cert_sign, 
-                    crl_sign=crl_sign, 
-                    encipher_only=encipher_only, 
+                    digital_signature=digital_signature,
+                    content_commitment=content_commitment,
+                    key_encipherment=key_encipherment,
+                    data_encipherment=data_encipherment,
+                    key_agreement=key_agreement,
+                    key_cert_sign=key_cert_sign,
+                    crl_sign=crl_sign,
+                    encipher_only=encipher_only,
                     decipher_only=decipher_only,
                 ),
                 critical=True,
@@ -53,7 +54,7 @@ def make(pkey_pem, emails, usage):
     return csr_pem
 
 def init_save_csr(privkey, email, config, usage):
-    path = config.csr_dir
+    path = os.path.join(config.config_dir, "csr")
     csr_pem = make(privkey.pem, email, usage)
     util.make_or_verify_dir(path, 0o755, config.strict_permissions)
     csr_f, csr_filename = util.unique_file(os.path.join(path, 'csr-certbot.pem'), 0o644, "wb")
@@ -74,6 +75,7 @@ def prepare(emails, config, key_path=None, usage=None):
         ## CSR is always used, as it MUST send "email" identifier (dns by default)
         #csr = util.CSR(file=None, form="pem", data=make_csr(key.pem, emails))
     else:
-        key = key or crypto_util.generate_key(config.rsa_key_size, config.key_dir)
+        key_dir = os.path.join(config.config_dir, constants.KEY_DIR)
+        key = key or crypto_util.generate_key(config.rsa_key_size, key_dir)
     csr = init_save_csr(key, emails, config, usage)
     return key,csr
