@@ -95,6 +95,8 @@ def request_cert(args, config):
             cli_args.extend(['--castle-tb-unsafe'])
         if (args.tb_bin):
             cli_args.extend(['--castle-tb-bin',args.tb_bin])
+    elif (args.file_validate):            
+        cli_args.extend(['-a','castle-file'])
     else:
         cli_args.extend(['-a','castle-interactive'])
     cli_args.extend(['-i','castle-installer'])
@@ -251,6 +253,8 @@ def parse_args():
     parser.add_argument('--tb-unsafe', help='Run authenticator disabling security checks. USE WITH CAUTION.', action='store_true')
     parser.add_argument('--tb-profile', help='Thunderbird profile where it runs')
     parser.add_argument('--tb-bin', help='Thunderbird binary/executable path')
+
+    parser.add_argument('--file-validate', help='Use file-based validator (for automation)', action='store_true')
 
     args = parser.parse_args()
     process_args(args)
