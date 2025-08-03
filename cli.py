@@ -32,9 +32,14 @@ def prepare_cli_args(args):
     if (command == 'cert'): cli_args.extend(['certonly'])
     else: cli_args.extend([command])
 
-    if (args.test): cli_args.extend(['--server','https://acme-staging.castle.cloud/acme/directory'])
-    else: cli_args.extend(['--server','https://acme.castle.cloud/acme/directory'])
+    if (args.server):
+        cli_args.extend(['--server', args.server])
+    elif (args.test):
+        cli_args.extend(['--server','https://acme-staging.castle.cloud/acme/directory'])
+    else:
+        cli_args.extend(['--server','https://acme.castle.cloud/acme/directory'])
 
+    if (args.no_verify_ssl): cli_args.extend(['--no-verify-ssl'])
     if (args.non_interactive): cli_args.extend(['-n'])
 
     return cli_args
@@ -75,6 +80,8 @@ def request_cert(args, config):
             cli_args.extend(['--castle-imap-port',args.port])
         if (args.ssl):
             cli_args.extend(['--castle-imap-ssl'])
+        if (args.no_verify_ssl):
+            cli_args.extend(['--castle-imap-no-verify-ssl'])
         if (args.smtp_method):
             cli_args.extend(['--castle-imap-smtp-method',args.smtp_method])
         if (args.smtp_login):
@@ -106,8 +113,8 @@ def request_cert(args, config):
         cli_args.extend(['-m',args.contact])
     if (args.agree_tos):
         cli_args.extend(['--agree-tos'])
-    config,plugins = prepare_config(cli_args)
 
+    config,plugins = prepare_config(cli_args)
     config.cert_path = config.live_dir+'/cert.pem'
     config.chain_path = config.live_dir+'/ca.pem'
     config.fullchain_path = config.live_dir+'/chain.pem'
@@ -218,6 +225,8 @@ def parse_args():
     parser.add_argument('-c','--config-dir', help='Configuration directory')
     parser.add_argument('-w','--work-dir', help='Working directory')
     parser.add_argument('-l','--logs-dir', help='Logs directory')
+    parser.add_argument('--server', help='specify an alternative ACME (Automated Certificate Management Environment) server')
+    parser.add_argument('--no-verify-ssl', help='skip the SSL/TLS certificate verification', action='store_true')
     parser.add_argument('--agree-tos', help='Accepts Terms of Service', action='store_true')
     parser.add_argument('--contact', help='Contact e-mail for important account notifications')
     parser.add_argument('--imap', help='Uses IMAP Authenticator for automatic reply', action='store_true')
