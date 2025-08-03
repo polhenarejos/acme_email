@@ -29,8 +29,9 @@ The ACME Email S/MIME client, implemented in `cli.py`, utilizes the Certbot fram
 Here's how to use the client:
 
 ```plaintext
-usage: cli.py [-h] [-e EMAIL] [-t] [--dry-run] [-n] [-c CONFIG_DIR] [-w WORK_DIR] [-l LOGS_DIR] [--server] [--no-verify-ssl]
-              [--agree-tos] [--contact CONTACT] [--imap] [--login LOGIN] [--password PASSWORD] [--host HOST] [--port PORT]
+usage: cli.py [-h] [-e EMAIL] [-t] [--dry-run] [-n] [-c CONFIG_DIR] [-w WORK_DIR] [-l LOGS_DIR]
+              [--server] [--no-verify-ssl] [--agree-tos] [--contact CONTACT]
+              [--imap] [--login LOGIN] [--password PASSWORD] [--host HOST] [--port PORT]
               [--ssl] [--smtp-method {STARTTLS,SSL,plain}] [--smtp-login SMTP_LOGIN] [--smtp-password SMTP_PASSWORD]
               [--smtp-host SMTP_HOST] [--smtp-port SMTP_PORT] [--no-passphrase] [--passphrase PASSPHRASE]
               [--usage {digitalSignature,contentCommitment,keyEncipherment,keyAgreement}] [--cert-path CERT_PATH]
