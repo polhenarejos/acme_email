@@ -29,7 +29,7 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
 
     description = "Automatic S/MIME challenge by using IMAP integration"
     __in_idle = False
-    
+
     def __set_idle(self, mode):
         if (mode == True and self.__in_idle == False):
             self.imap.idle()
@@ -49,7 +49,8 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
         add('host',help='IMAP server host')
         add('port',help='IMAP server port')
         add('ssl',help='IMAP SSL',action='store_true')
-        
+        add('no-verify-ssl',help='skip the SSL/TLS certificate verification',action='store_true')
+
         add('smtp-method',help='SMTP method {STARTTLS,SSL,plain}',choices= ['STARTTLS','SSL','plain'])
         add('smtp-login',help='IMAP login')
         add('smtp-password',help='IMAP password')
@@ -61,27 +62,29 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
                "It configures an IMAP and SMTP e-mail clients to receive and answer ACME challenges. ")
 
     def prepare(self):  # pylint: disable=missing-function-docstring
-        self.imap = imapclient.IMAPClient(self.conf('host'), port=self.conf('port'), use_uid=False, ssl=True if self.conf('ssl') else False)
+        context = ssl.create_default_context()
+        if self.conf('no_verify_ssl'):
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+        self.imap = imapclient.IMAPClient(self.conf('host'), port=self.conf('port'), use_uid=False, ssl=True if self.conf('ssl') else False, ssl_context=context)
         self.imap.login(self.conf('login'),self.conf('password'))
         self.imap.select_folder('INBOX')
         if b'IDLE' not in self.imap.capabilities():
             raise errors.AuthorizationError('IMAP server does not support IDLE. Cannot continue.')
         self.__idle(True)
-        
+
         method = self.conf('smtp-method')
         smtp_server = self.conf('smtp-host') if self.conf('smtp-host') else self.conf('host')
         port = self.conf('smtp-port') if self.conf('smtp-port') else self.conf('port')
         login = self.conf('smtp-login') if self.conf('smtp-login') else self.conf('login')
         password = self.conf('smtp-password') if self.conf('smtp-password') else self.conf('password')
         if (method == 'STARTTLS'):
-            context = ssl.create_default_context()
             port = port if port else 587
             self.smtp = SMTP(smtp_server,port=port)
             self.smtp.ehlo()
             self.smtp.starttls(context=context) # Secure the connection
             self.smtp.ehlo() # Can be omitted
         elif (method == 'SSL'):
-            context = ssl.create_default_context()
             port = port if port else 465
             self.smtp = SMTP_SSL(smtp_server,port=port,context=context)
         else:
@@ -98,7 +101,7 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
 
     def _perform_emailreply00(self, achall):
         response, _ = achall.challb.response_and_validation(achall.account_key)
-        
+
         text = 'A challenge request for S/MIME certificate has been sent. In few minutes, ACME server will send a challenge e-mail to requested recipient {}. You do not need to take ANY action, as it will be replied automatically.'.format(achall.domain)
         display_util.notification(text,pause=False)
         sent = False
@@ -126,7 +129,7 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
                                 message += 'Subject: Re: {}\n\n'.format(msg['Subject'])
                                 message += body
                                 self.smtp.sendmail(me,to,message)
-                                
+
                                 self.imap.add_flags(message_id,imapclient.SEEN)
                                 self.imap.add_flags(message_id,imapclient.DELETED)
                                 display_util.notification('The ACME response has been sent successfully!',pause=False)
@@ -148,7 +151,7 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
             self.smtp.quit()
         except imaplib.IMAP4.abort:
             pass
-        
+
     def __idle(self,on):
         if (on == True):
             if (not self.__in_idle):
