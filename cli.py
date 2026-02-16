@@ -127,8 +127,14 @@ def request_cert(args, config):
     config.chain_path = chain_path
     certbot_main._csr_report_new_cert(config, cert_path, chain_path, fullchain_path)
     if (not config.dry_run):
-        #Fixed Type error on final steps 
-        certbot_main._install_cert(config, le_client, [args.email])
+        if installer:
+            installer.deploy_cert(
+                domain=args.email[0] if args.email else None,
+                cert_path=cert_path,
+                key_path=config.key_path,
+                chain_path=chain_path,
+                fullchain_path=fullchain_path
+            )
     else:
         util.safely_remove(csr.file)
 
