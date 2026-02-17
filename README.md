@@ -138,6 +138,11 @@ Notes:
 2. This authenticator works with "normal" email accounts and does not support OAuth login (e.g., Gmail).
 3. The ACME messages are retrieved from the INBOX. Ensure correct spam filtering or pre-filtering rules are in place.
 4. If issues arise, consider using the interactive authenticator.
+5. older OS'es might give this error and there is a solution:
+'When a MacBook does not accept the password for a .p12 certificate (resulting in a "MAC verification failed" or "wrong password" error), it is frequently due to incompatibilities between modern OpenSSL versions (3.x) and Apple's security framework, or issues with special characters.
+
+If the certificate was created using OpenSSL 3.0 or higher, it uses encryption algorithms (like AES-256) that older macOS versions or native tools cannot read, even with the correct password.
+Fix: Regenerate the .p12 file using the -legacy flag in your OpenSSL command:'
 
 If the process is successful, the ACME server will grant the request and issue a certificate. The certificate will be downloaded automatically and stored in a PKCS12 container, which includes the private key. It's highly recommended to protect the PKCS12 container with a passphrase. You can specify the passphrase using `--passphrase <the_passphrase>` to automate the process.
 
