@@ -118,6 +118,15 @@ No other extensions are allowed in the CSR. Any CSR with extensions different fr
 
 If `--key-path` is used for the `cert` command, the new certificate will contain the same public key corresponding to the specified private key. This is useful for renewals with the same public key.
 
+### PKCS12 Certificate
+
+If the process is successful, the ACME server will grant the request and issue a certificate. The certificate will be downloaded automatically and stored in a PKCS12 container, which includes the private key. It is highly recommended to protect the PKCS12 container with a passphrase. You can specify the passphrase using `--passphrase <the_passphrase>` to automate the process.
+
+> **Note for macOS users:** Older macOS versions may fail to open the `.p12` file, showing a "MAC verification failed" or "wrong password" error even when the password is correct. This is caused by incompatibilities between the encryption algorithms used by OpenSSL 3.x (such as AES-256) and Apple's security framework. To fix this, regenerate the `.p12` file using the `-legacy` flag:
+> ```bash
+> openssl pkcs12 -legacy ...
+> ```
+
 ### Example
 
 #### Using IMAP authenticator
@@ -138,13 +147,7 @@ Notes:
 2. This authenticator works with "normal" email accounts and does not support OAuth login (e.g., Gmail).
 3. The ACME messages are retrieved from the INBOX. Ensure correct spam filtering or pre-filtering rules are in place.
 4. If issues arise, consider using the interactive authenticator.
-5. older OS'es might give this error and there is a solution:
-'When a MacBook does not accept the password for a .p12 certificate (resulting in a "MAC verification failed" or "wrong password" error), it is frequently due to incompatibilities between modern OpenSSL versions (3.x) and Apple's security framework, or issues with special characters.
-
-If the certificate was created using OpenSSL 3.0 or higher, it uses encryption algorithms (like AES-256) that older macOS versions or native tools cannot read, even with the correct password.
-Fix: Regenerate the .p12 file using the -legacy flag in your OpenSSL command:'
-
-If the process is successful, the ACME server will grant the request and issue a certificate. The certificate will be downloaded automatically and stored in a PKCS12 container, which includes the private key. It's highly recommended to protect the PKCS12 container with a passphrase. You can specify the passphrase using `--passphrase <the_passphrase>` to automate the process.
+  
 
 #### Using MAPI/Outlook authenticator
 With this authenticator, no login and password are provided in the CLI since it uses Outlook client to manage the account. This authenticator works with OAuth email providers.
