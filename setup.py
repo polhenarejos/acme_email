@@ -12,7 +12,8 @@ else:
     raise RuntimeError("Unable to find version string in %s." % (VERSIONFILE,))
 
 INSTALL_REQUIRES = [
-    'certbot>=1.20.0',
+    'certbot<=3.0',
+    'josepy<2.0',
     'acme>=1.20.0',
     'setuptools',
     'imapclient',
