@@ -63,7 +63,8 @@ setup(
             'castle-installer = certbot_castle.plugins.installer:Installer',
             'castle-imap = certbot_castle.plugins.imap:Authenticator',
             'castle-mapi = certbot_castle.plugins.mapi:Authenticator',
-            'castle-tb = certbot_castle.plugins.thunderbird:Authenticator'
+            'castle-tb = certbot_castle.plugins.thunderbird:Authenticator',
+            'castle-file = certbot_castle.plugins.file:Authenticator'
         ],
     },
 )
