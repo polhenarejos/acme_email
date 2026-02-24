@@ -189,7 +189,7 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
                     my_dict = my_dict.setdefault(key, {})
                 my_dict[keys[-1]] = value
             for line in f.readlines():
-                m = re.findall('user_pref\("(.+)",\s*(.+)\)',line)
+                m = re.findall(r'user_pref\("(.+)",\s*(.+)\)', line)
                 if (len(m) > 0):
                     try:
                         val = m[0][1]
@@ -216,4 +216,3 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
             raise errors.AuthorizationError('Cannot find Thunderbird binary/executable. Use --tb-bin to provide the path.')
 
         return tb_bin
-
