@@ -179,7 +179,7 @@ def root_cert_advise():
     fingerprints = list(map(lambda a: a.fingerprint(hashes.SHA256()).hex(), root_certs))
     matches = sum(e in fingerprints for e in castle_fingerprints)
     if (matches == 0):
-        text = 'You are requesting a S/MIME certificate to CASTLE ACME server. Remember to add the root certificate into your trust store for proper operation.'
+        text = 'You are requesting a S/MIME certificate to CASTLE ACME server. Remember to add the root certificate into your trust store for proper operation. You can download the root certificate from https://acme.castle.cloud/documentation/chain-of-trust/'
         display_util.notification(text,pause=False)
 
 def request_cert(args, config):
