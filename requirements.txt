@@ -1,0 +1,9 @@
+certbot
+josepy
+acme>=1.20.0
+setuptools
+imapclient
+dkimpy
+cryptography>=3.3
+psutil
+pywin32; sys_platform == "win32"
