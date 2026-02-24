@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
-import argparse, logging, sys, getpass, tempfile, os
+import argparse, logging, sys, getpass, tempfile, os, datetime, copy
 from certbot._internal.plugins import disco as plugins_disco
 from certbot._internal.plugins import selection as plug_sel
 from certbot._internal import cli
 from certbot._internal import main as certbot_main
 from certbot._internal import storage
 from certbot._internal import log
+from certbot._internal import renewal
 from certbot._internal.display import obj as display_obj
 from certbot.display import util as display_util
 from certbot import errors
@@ -18,6 +19,8 @@ from certbot.compat import misc
 from certbot_castle import csr as csr_util
 from certbot_castle.utils import get_root_ca_certs
 
+from cryptography import x509
+from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.serialization import pkcs12, Encoding
 
@@ -53,12 +56,99 @@ def _csr_get_and_enroll_cert(config, le_client, key_path, email):
             config
         )
 
+def _append_auth_installer_args(args, cli_args, allow_interactive=True):
+    if (args.imap):
+        cli_args.extend(['-a','castle-imap'])
+        cli_args.extend(['--castle-imap-login',args.login])
+        cli_args.extend(['--castle-imap-password',args.password])
+        cli_args.extend(['--castle-imap-host',args.host])
+        if (args.port):
+            cli_args.extend(['--castle-imap-port',args.port])
+        if (args.ssl):
+            cli_args.extend(['--castle-imap-ssl'])
+        if (args.no_verify_ssl):
+            cli_args.extend(['--castle-imap-no-verify-ssl'])
+        if (args.smtp_method):
+            cli_args.extend(['--castle-imap-smtp-method',args.smtp_method])
+        if (args.smtp_login):
+            cli_args.extend(['--castle-imap-smtp-login',args.smtp_login])
+        if (args.smtp_password):
+            cli_args.extend(['--castle-imap-smtp-password',args.smtp_password])
+        cli_args.extend(['--castle-imap-smtp-host',args.smtp_host])
+        if (args.smtp_port):
+            cli_args.extend(['--castle-imap-smtp-port',args.smtp_port])
+    elif (args.outlook):
+        cli_args.extend(['-a','castle-mapi'])
+        cli_args.extend(['--castle-mapi-account',args.outlook_account])
+    elif (args.tb):
+        cli_args.extend(['-a','castle-tb'])
+        if (args.tb_profile):
+            cli_args.extend(['--castle-tb-profile',args.tb_profile])
+        if (args.tb_unsafe):
+            cli_args.extend(['--castle-tb-unsafe'])
+        if (args.tb_bin):
+            cli_args.extend(['--castle-tb-bin',args.tb_bin])
+    elif (args.file_validate):
+        cli_args.extend(['-a','castle-file'])
+    elif allow_interactive:
+        cli_args.extend(['-a','castle-interactive'])
+    else:
+        raise errors.Error(
+            "renew requires an authenticator. Use one of: "
+            "--imap, --outlook, --tb, or --file-validate."
+        )
+    cli_args.extend(['-i','castle-installer'])
+    if (args.no_passphrase):
+        cli_args.extend(['--castle-installer-no-passphrase'])
+    elif (args.passphrase):
+        cli_args.extend(['--castle-installer-passphrase',args.passphrase])
+    if (args.contact):
+        cli_args.extend(['-m',args.contact])
+    if (args.agree_tos):
+        cli_args.extend(['--agree-tos'])
+
+def _extract_emails_from_cert(cert_path):
+    with open(cert_path, 'rb') as cert_file:
+        cert = x509.load_pem_x509_certificate(cert_file.read())
+    emails = []
+    try:
+        san = cert.extensions.get_extension_for_class(x509.SubjectAlternativeName).value
+        for name in san:
+            if isinstance(name, x509.RFC822Name):
+                emails.append(name.value)
+            elif isinstance(name, x509.DNSName) and '@' in name.value:
+                emails.append(name.value)
+    except x509.ExtensionNotFound:
+        pass
+    if not emails:
+        for attr in cert.subject.get_attributes_for_oid(NameOID.EMAIL_ADDRESS):
+            emails.append(attr.value)
+    dedup = []
+    for email in emails:
+        if email not in dedup:
+            dedup.append(email)
+    return dedup
+
+def _should_renew_now(cert_path, renew_before_days=30):
+    with open(cert_path, 'rb') as cert_file:
+        cert = x509.load_pem_x509_certificate(cert_file.read())
+    renew_before = datetime.timedelta(days=renew_before_days)
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    not_valid_after = getattr(cert, "not_valid_after_utc", None)
+    if not_valid_after is None:
+        not_valid_after = cert.not_valid_after.replace(tzinfo=datetime.timezone.utc)
+    return not_valid_after <= now_utc + renew_before
+
 def prepare_cli_args(args):
     cli_args = []
     command = args.command.lower()
-    if (args.config_dir): cli_args.extend(['--config-dir',args.config_dir])
-    if (args.work_dir): cli_args.extend(['--work-dir',args.work_dir])
-    if (args.logs_dir): cli_args.extend(['--logs-dir',args.logs_dir])
+    base_dir = os.getcwd()
+    config_dir = args.config_dir if args.config_dir else base_dir
+    work_dir = args.work_dir if args.work_dir else os.path.join(base_dir, 'workdir')
+    logs_dir = args.logs_dir if args.logs_dir else os.path.join(base_dir, 'logs')
+    cli_args.extend(['--config-dir', config_dir])
+    cli_args.extend(['--work-dir', work_dir])
+    cli_args.extend(['--logs-dir', logs_dir])
 
     if (command == 'cert'): cli_args.extend(['certonly'])
     else: cli_args.extend([command])
@@ -104,50 +194,7 @@ def request_cert(args, config):
     for email in args.email:
         cli_args.extend(['-d',email])
     cli_args.extend(['--csr',csr.file])
-    if (args.imap):
-        cli_args.extend(['-a','castle-imap'])
-        cli_args.extend(['--castle-imap-login',args.login])
-        cli_args.extend(['--castle-imap-password',args.password])
-        cli_args.extend(['--castle-imap-host',args.host])
-        if (args.port):
-            cli_args.extend(['--castle-imap-port',args.port])
-        if (args.ssl):
-            cli_args.extend(['--castle-imap-ssl'])
-        if (args.no_verify_ssl):
-            cli_args.extend(['--castle-imap-no-verify-ssl'])
-        if (args.smtp_method):
-            cli_args.extend(['--castle-imap-smtp-method',args.smtp_method])
-        if (args.smtp_login):
-            cli_args.extend(['--castle-imap-smtp-login',args.smtp_login])
-        if (args.smtp_password):
-            cli_args.extend(['--castle-imap-smtp-password',args.smtp_password])
-        cli_args.extend(['--castle-imap-smtp-host',args.smtp_host])
-        if (args.smtp_port):
-            cli_args.extend(['--castle-imap-smtp-port',args.smtp_port])
-    elif (args.outlook):
-        cli_args.extend(['-a','castle-mapi'])
-        cli_args.extend(['--castle-mapi-account',args.outlook_account])
-    elif (args.tb):
-        cli_args.extend(['-a','castle-tb'])
-        if (args.tb_profile):
-            cli_args.extend(['--castle-tb-profile',args.tb_profile])
-        if (args.tb_unsafe):
-            cli_args.extend(['--castle-tb-unsafe'])
-        if (args.tb_bin):
-            cli_args.extend(['--castle-tb-bin',args.tb_bin])
-    elif (args.file_validate):            
-        cli_args.extend(['-a','castle-file'])
-    else:
-        cli_args.extend(['-a','castle-interactive'])
-    cli_args.extend(['-i','castle-installer'])
-    if (args.no_passphrase):
-        cli_args.extend(['--castle-installer-no-passphrase'])
-    elif (args.passphrase):
-        cli_args.extend(['--castle-installer-passphrase',args.passphrase])
-    if (args.contact):
-        cli_args.extend(['-m',args.contact])
-    if (args.agree_tos):
-        cli_args.extend(['--agree-tos'])
+    _append_auth_installer_args(args, cli_args)
 
     config,plugins = prepare_config(cli_args)
     config.key_path = key.file
@@ -234,6 +281,87 @@ def revoke_cert(args, config):
     if (cert_path):
         os.unlink(cert_path)
 
+def renew_certs(args, config):
+    root_cert_advise()
+    cli_args = prepare_cli_args(args)
+    if (args.dry_run):
+        cli_args.extend(['--dry-run'])
+    config,plugins = prepare_config(cli_args)
+
+    renewed = 0
+    failed = []
+    parse_failures = 0
+    for renewal_file in storage.renewal_conf_files(config):
+        display_util.notification("Processing\n" + renewal_file, pause=False)
+        lineage_config = copy.deepcopy(config)
+        lineage = renewal.reconstitute(lineage_config, renewal_file)
+        if lineage is None:
+            parse_failures += 1
+            continue
+        if (not args.force) and (not _should_renew_now(lineage.cert_path)):
+            continue
+
+        try:
+            installer, auth = plug_sel.choose_configurator_plugins(lineage_config, plugins, "certonly")
+        except errors.PluginSelectionError as e:
+            logger.info("Could not choose appropriate plugin for %s: %s", renewal_file, e)
+            continue
+        le_client = certbot_main._init_le_client(lineage_config, auth, installer)
+
+        emails = _extract_emails_from_cert(lineage.cert_path)
+        if not emails:
+            logger.warning("Skipping %s: no e-mail identifiers found in current cert.", lineage.lineagename)
+            continue
+        action = "Simulating renewal of an existing certificate" if lineage_config.dry_run else "Renewing an existing certificate"
+        display_util.notification(f"{action} for {', '.join(emails)}", pause=False)
+        with open(lineage.key_path, 'rb') as key_file:
+            privkey = key_file.read()
+        csr = None
+        try:
+            key = util.Key(file=lineage.key_path, pem=privkey)
+            csr = csr_util.init_save_csr(key, emails, lineage_config, usage=None)
+            cert, chain = le_client.obtain_certificate_from_csr(csr)
+            if (not lineage_config.dry_run):
+                prior_version = lineage.latest_common_version()
+                new_version = lineage.save_successor(prior_version, cert, privkey, chain, lineage_config)
+                lineage.update_all_links_to(new_version)
+                lineage.truncate()
+                try:
+                    certbot_main._install_cert(
+                        lineage_config,
+                        le_client,
+                        certbot_main.san.guess(emails),
+                        lineage=lineage
+                    )
+                except (TypeError, AttributeError):
+                    certbot_main._install_cert(lineage_config, le_client, emails, lineage=lineage)
+            renewed += 1
+        except Exception as e:
+            failed.append((lineage.lineagename, lineage.fullchain_path, str(e)))
+            display_util.notification(
+                f"Failed to renew certificate {lineage.lineagename} with error: {e}",
+                pause=False
+            )
+        finally:
+            if csr and getattr(csr, 'file', None):
+                util.safely_remove(csr.file)
+
+    if config.dry_run:
+        display_util.notify("The dry run was successful.")
+    if failed and renewed == 0:
+        display_util.notification(
+            "All simulated renewals failed." if config.dry_run else "All renewals failed.",
+            pause=False
+        )
+        for _, fullchain_path, _ in failed:
+            display_util.notification(f"  {fullchain_path} (failure)", pause=False)
+    if renewed == 0 and not failed:
+        display_util.notify("No renewals were attempted.")
+    else:
+        display_util.notify(f"Renewed {renewed} certificate lineage(s).")
+    if failed or parse_failures:
+        display_util.notify(f"{len(failed)} renew failure(s), {parse_failures} parse failure(s)")
+
 def main(args):
     ## Prepare storage system
     command = args.command.lower()
@@ -254,6 +382,8 @@ def main(args):
         request_cert(args, config)
     elif (command == 'revoke'):
         revoke_cert(args, config)
+    elif (command == 'renew'):
+        renew_certs(args, config)
 
 def process_args(args):
     if args.email:
@@ -266,6 +396,7 @@ def parse_args():
     parser.add_argument('-e','--email', help='E-mail address to certify. Multiple e-mail addresses are allowed', required='cert' in sys.argv, action='append')
     parser.add_argument('-t','--test', help='Tests the certification from a staging server', action='store_true')
     parser.add_argument('--dry-run', help='Do not store any file. For testing', action='store_true')
+    parser.add_argument('--force', help='Force renewal of certificates (renew command)', action='store_true')
     parser.add_argument('-n','--non-interactive', help='Runs the certification without any user interaction', action='store_true')
     parser.add_argument('-c','--config-dir', help='Configuration directory')
     parser.add_argument('-w','--work-dir', help='Working directory')
