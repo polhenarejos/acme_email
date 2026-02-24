@@ -16,24 +16,24 @@ from cryptography.hazmat.primitives.serialization import pkcs12
 logger = logging.getLogger(__name__)
 
 class Installer(common.Plugin, interfaces.Installer, metaclass=abc.ABCMeta):
-    
+
     description = "Generates PKCS12 container from S/MIME challenge"
-    
+
     @classmethod
     def add_parser_arguments(cls, add):
-        
+
         add('no-passphrase',help='Installs the PKCS12 without passphrase. Use with CAUTION: the PKCS12 file contains the private key',action='store_true')
         add('passphrase',help='Passphrase to use for the PKCS12 generation. This passpharse will be used for private key encryption')
 
     def more_info(self):  # pylint: disable=missing-function-docstring
         return("This installer generates the PKCS12/PFX container once the certificate is issued. ")
-    
+
     def get_all_names(self):
         return []
 
     def prepare(self):
-        pass 
-    
+        pass
+
     def deploy_cert(self, domain, cert_path, key_path, chain_path=None, fullchain_path=None):
 
         if not fullchain_path:
@@ -59,6 +59,8 @@ class Installer(common.Plugin, interfaces.Installer, metaclass=abc.ABCMeta):
                     vpf = getpass.getpass('Re-enter passphrase: ')
                 passphrase = pf.encode('utf-8')
         algo = serialization.BestAvailableEncryption(passphrase) if passphrase else serialization.NoEncryption()
+        if isinstance(domain, list):
+            domain = domain[0]
         pfxdata = pkcs12.serialize_key_and_certificates(name=domain.encode('utf-8'), key=privkey, cert=cert, cas=[chain], encryption_algorithm=algo)
         path, _ = os.path.split(cert_path)
         pfx_f, pfx_filename = util.unique_file(os.path.join(path, 'cert.pfx'), 0o600, "wb")
