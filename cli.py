@@ -77,7 +77,7 @@ def prepare_cli_args(args):
 
 def prepare_config(cli_args):
     plugins = plugins_disco.PluginsRegistry.find_all()
-    config = cli.prepare_and_parse_args(plugins, cli_args)
+    config = cli.prepare_and_parse_args(plugins, list(cli_args))
     return config,plugins
 
 def root_cert_advise():
@@ -94,11 +94,13 @@ def root_cert_advise():
 
 def request_cert(args, config):
     root_cert_advise()
-    key, csr = csr_util.prepare(args.email, config, key_path=args.key_path, usage=args.usage)
-    ## Reparse for including --csr arguments
     cli_args = prepare_cli_args(args)
     if (args.dry_run):
         cli_args.extend(['--dry-run'])
+    # Use a config that already reflects dry-run to avoid writing keys on disk.
+    csr_config, _ = prepare_config(cli_args)
+    key, csr = csr_util.prepare(args.email, csr_config, key_path=args.key_path, usage=args.usage)
+    ## Reparse for including --csr arguments
     for email in args.email:
         cli_args.extend(['-d',email])
     cli_args.extend(['--csr',csr.file])
@@ -150,33 +152,36 @@ def request_cert(args, config):
     config,plugins = prepare_config(cli_args)
     config.key_path = key.file
     try:
-        # installers are used in auth mode to determine domain names
-        installer, auth = plug_sel.choose_configurator_plugins(config, plugins, "certonly")
-    except errors.PluginSelectionError as e:
-        logger.info("Could not choose appropriate plugin: %s", e)
-        raise
-    le_client = certbot_main._init_le_client(config, auth, installer)
-
-    lineage = _csr_get_and_enroll_cert(config, le_client, key.file, args.email[0])
-    if (not config.dry_run):
-        config.cert_path = lineage.cert_path
-        config.fullchain_path = lineage.fullchain_path
-        config.chain_path = lineage.chain_path
-        config.key_path = lineage.key_path
-        certbot_main._csr_report_new_cert(
-            config,
-            config.cert_path,
-            config.chain_path,
-            config.fullchain_path
-        )
-        # Certbot version compatibility: newer versions expect SAN objects.
         try:
-            certbot_main._install_cert(config, le_client, certbot_main.san.guess(args.email))
-        except (TypeError, AttributeError):
-            certbot_main._install_cert(config, le_client, args.email)
-    else:
-        display_util.notify("The dry run was successful.")
-        util.safely_remove(csr.file)
+            # installers are used in auth mode to determine domain names
+            installer, auth = plug_sel.choose_configurator_plugins(config, plugins, "certonly")
+        except errors.PluginSelectionError as e:
+            logger.info("Could not choose appropriate plugin: %s", e)
+            raise
+        le_client = certbot_main._init_le_client(config, auth, installer)
+
+        lineage = _csr_get_and_enroll_cert(config, le_client, key.file, args.email[0])
+        if (not config.dry_run):
+            config.cert_path = lineage.cert_path
+            config.fullchain_path = lineage.fullchain_path
+            config.chain_path = lineage.chain_path
+            config.key_path = lineage.key_path
+            certbot_main._csr_report_new_cert(
+                config,
+                config.cert_path,
+                config.chain_path,
+                config.fullchain_path
+            )
+            # Certbot version compatibility: newer versions expect SAN objects.
+            try:
+                certbot_main._install_cert(config, le_client, certbot_main.san.guess(args.email))
+            except (TypeError, AttributeError):
+                certbot_main._install_cert(config, le_client, args.email)
+        else:
+            display_util.notify("The dry run was successful.")
+    finally:
+        if config.dry_run and getattr(csr, 'file', None):
+            util.safely_remove(csr.file)
 
 def try_open_p12(file,passphrase=None):
     with open(args.cert_path,'rb') as p12:
