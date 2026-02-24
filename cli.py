@@ -5,6 +5,7 @@ from certbot._internal.plugins import disco as plugins_disco
 from certbot._internal.plugins import selection as plug_sel
 from certbot._internal import cli
 from certbot._internal import main as certbot_main
+from certbot._internal import storage
 from certbot._internal import log
 from certbot._internal.display import obj as display_obj
 from certbot.display import util as display_util
@@ -21,6 +22,36 @@ from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.serialization import pkcs12, Encoding
 
 logger = logging.getLogger(__name__)
+
+def _lineage_name_from_email(email):
+    safe = ''.join(c if c.isalnum() or c in ('-', '_', '.') else '_' for c in email)
+    return safe if safe else 'smime'
+
+def _csr_get_and_enroll_cert(config, le_client, key_path, email):
+    cert, chain = le_client.obtain_certificate_from_csr(config.actual_csr)
+    if config.dry_run:
+        logger.debug("Dry run: skipping lineage creation for CSR request")
+        return None
+
+    with open(key_path, 'rb') as key_f:
+        privkey = key_f.read()
+    certname = _lineage_name_from_email(email)
+    try:
+        renewal_file = storage.renewal_file_for_certname(config, certname)
+        lineage = storage.RenewableCert(renewal_file, config)
+        prior_version = lineage.latest_common_version()
+        new_version = lineage.save_successor(prior_version, cert, privkey, chain, config)
+        lineage.update_all_links_to(new_version)
+        lineage.truncate()
+        return lineage
+    except errors.CertStorageError:
+        return storage.RenewableCert.new_lineage(
+            certname,
+            cert,
+            privkey,
+            chain,
+            config
+        )
 
 def prepare_cli_args(args):
     cli_args = []
@@ -117,10 +148,6 @@ def request_cert(args, config):
         cli_args.extend(['--agree-tos'])
 
     config,plugins = prepare_config(cli_args)
-    config.cert_path = config.live_dir+'/cert.pem'
-    config.chain_path = config.live_dir+'/ca.pem'
-    config.fullchain_path = config.live_dir+'/chain.pem'
-
     config.key_path = key.file
     try:
         # installers are used in auth mode to determine domain names
@@ -130,15 +157,25 @@ def request_cert(args, config):
         raise
     le_client = certbot_main._init_le_client(config, auth, installer)
 
-    cert_path, chain_path, fullchain_path = certbot_main._csr_get_and_save_cert(config, le_client)
-    config.cert_path = cert_path
-    config.fullchain_path = fullchain_path
-    config.chain_path = chain_path
-    certbot_main._csr_report_new_cert(config, cert_path, chain_path, fullchain_path)
+    lineage = _csr_get_and_enroll_cert(config, le_client, key.file, args.email[0])
     if (not config.dry_run):
-        #Fixed Type error on final steps 
-        certbot_main._install_cert(config, le_client, [args.email])
+        config.cert_path = lineage.cert_path
+        config.fullchain_path = lineage.fullchain_path
+        config.chain_path = lineage.chain_path
+        config.key_path = lineage.key_path
+        certbot_main._csr_report_new_cert(
+            config,
+            config.cert_path,
+            config.chain_path,
+            config.fullchain_path
+        )
+        # Certbot version compatibility: newer versions expect SAN objects.
+        try:
+            certbot_main._install_cert(config, le_client, certbot_main.san.guess(args.email))
+        except (TypeError, AttributeError):
+            certbot_main._install_cert(config, le_client, args.email)
     else:
+        display_util.notify("The dry run was successful.")
         util.safely_remove(csr.file)
 
 def try_open_p12(file,passphrase=None):
