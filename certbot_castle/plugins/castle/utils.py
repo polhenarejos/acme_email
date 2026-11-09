@@ -9,6 +9,7 @@ import email
 from . import dkim
 from . import pkcs7
 from . import exception
+from .exception import FromAddressMismatch, ReceiptAddressMismatch
 
 from acme import messages
 
@@ -16,14 +17,6 @@ from cryptography.hazmat.primitives import hashes
 
 import josepy as jose
 
-class FromAddressMismatch(exception.Error):
-    def __init__(self):
-        super().__init__('Email From Address does not match with challenge From Address')
-                
-class ReceiptAddressMismatch(exception.Error):
-    def __init__(self):
-        super().__init__('Email Receipt Address does not match with challenge email identifier')
-        
 class BadSubject(exception.Error):
     def __init__(self):
         super().__init__('Subject malformed')
@@ -57,4 +50,3 @@ def ProcessEmailChallenge(msg, achall):
     elif (msg.get_content_subtype() == 'signed'):
         pkcs7.ProcessPKCS7(msg, from_addr)
     return ChallengeFromSubject(subject, achall)
-        
