@@ -204,9 +204,9 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
                     self.imap.idle()
                 except imapclient.exceptions.IMAPClientError:
                     _, exists = self.imap._imap.response('EXISTS')
-                    if not exists or exists == [None]:
-                        raise
-                    self.__pending_idle_responses.extend((int(count), b'EXISTS') for count in exists)
+                    if exists and exists != [None]:
+                        self.__pending_idle_responses.extend((int(count), b'EXISTS') for count in exists)
+                    # IDLE can start with unsolicited responses other than EXISTS, such as FETCH.
                     while self.imap._imap._get_response() is not None:
                         _, exists = self.imap._imap.response('EXISTS')
                         if exists and exists != [None]:
