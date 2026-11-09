@@ -219,11 +219,20 @@ def request_cert(args, config):
                 config.chain_path,
                 config.fullchain_path
             )
-            # Certbot version compatibility: newer versions expect SAN objects.
+            if not installer:
+                raise errors.Error("Castle installer was not selected; cannot generate a PKCS#12 file.")
             try:
-                certbot_main._install_cert(config, le_client, certbot_main.san.guess(args.email))
-            except (TypeError, AttributeError):
-                certbot_main._install_cert(config, le_client, args.email)
+                installer.deploy_cert(
+                    domain=args.email[0] if args.email else None,
+                    cert_path=config.cert_path,
+                    key_path=config.key_path,
+                    chain_path=config.chain_path,
+                    fullchain_path=config.fullchain_path
+                )
+            except errors.Error:
+                raise
+            except Exception as e:
+                raise errors.Error("Failed to generate the PKCS#12 file: {}".format(e)) from e
         else:
             display_util.notify("The dry run was successful.")
     finally:

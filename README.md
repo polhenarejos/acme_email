@@ -121,6 +121,19 @@ No other extensions are allowed in the CSR. Any CSR with extensions different fr
 
 If `--key-path` is used for the `cert` command, the new certificate will contain the same public key corresponding to the specified private key. This is useful for renewals with the same public key.
 
+### PKCS#12 certificate
+
+After a successful request, the certificate and private key are packaged into a PKCS#12 (`.p12`/`.pfx`) file. Protect this file with a passphrase; use `--passphrase` to provide one non-interactively.
+
+Older macOS versions may fail to import a PKCS#12 file created with OpenSSL 3.x, sometimes reporting “MAC verification failed” or an incorrect password. If needed, re-export the file with OpenSSL 3.x legacy mode. Use legacy algorithms only when the target requires them:
+
+```bash
+openssl pkcs12 -in cert.pfx -out cert.pem
+openssl pkcs12 -export -legacy -in cert.pem -out cert-legacy.pfx
+```
+
+Replace the filenames as needed. The intermediate PEM contains the private key, so protect it and remove it after conversion.
+
 ### Example
 
 #### Using IMAP authenticator
@@ -141,8 +154,6 @@ Notes:
 2. This authenticator works with "normal" email accounts and does not support OAuth login (e.g., Gmail).
 3. The ACME messages are retrieved from the INBOX. Ensure correct spam filtering or pre-filtering rules are in place.
 4. If issues arise, consider using the interactive authenticator.
-
-If the process is successful, the ACME server will grant the request and issue a certificate. The certificate will be downloaded automatically and stored in a PKCS12 container, which includes the private key. It's highly recommended to protect the PKCS12 container with a passphrase. You can specify the passphrase using `--passphrase <the_passphrase>` to automate the process.
 
 #### Using MAPI/Outlook authenticator
 With this authenticator, no login and password are provided in the CLI since it uses Outlook client to manage the account. This authenticator works with OAuth email providers.
