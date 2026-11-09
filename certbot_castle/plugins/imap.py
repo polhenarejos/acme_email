@@ -39,6 +39,7 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
             self.__in_idle = False
 
     def _connect_imap(self, context):
+        self.__pending_idle_responses = []
         self.imap = imapclient.IMAPClient(
             self.conf('host'),
             port=self.conf('port'),
@@ -48,6 +49,7 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
         )
         self.imap.login(self.conf('login'), self.conf('password'))
         self.imap.select_folder('INBOX')
+        self.__pending_idle_responses.extend((message, b'EXISTS') for message in self.imap.search(['UNSEEN']))
         if b'IDLE' not in self.imap.capabilities():
             raise errors.AuthorizationError('IMAP server does not support IDLE. Cannot continue.')
         self.__idle(True)
