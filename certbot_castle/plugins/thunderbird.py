@@ -15,9 +15,10 @@ import abc
 import email
 import sys
 import re
-from urllib.parse import urlparse, unquote
+from urllib.parse import urlparse, unquote, quote
 import mailbox
 import subprocess
+import shutil
 
 from certbot_castle.plugins import castle
 
@@ -41,10 +42,11 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
     def __init__(self, *args, **kwargs):
         super(Authenticator, self).__init__(*args, **kwargs)
         if (sys.platform.startswith('win32')):
-            self.tb_path = os.getenv('APPDATA')+'/Thunderbird'
+            self.tb_path = os.path.join(os.getenv('APPDATA') or os.path.expanduser('~'), 'Thunderbird')
+        elif sys.platform == 'darwin':
+            self.tb_path = os.path.join(os.path.expanduser('~'), 'Library', 'Thunderbird')
         else:
-            from os.path import expanduser
-            self.tb_path = expanduser("~")+'/Library/Thunderbird'
+            self.tb_path = os.path.join(os.path.expanduser('~'), '.thunderbird')
         self.tb_bin = self.__tb_bin()
 
     @classmethod
@@ -61,17 +63,27 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
         profile = self.conf('profile')
         if (not profile):
             config = configparser.ConfigParser()
-            config.read(self.tb_path+'/profiles.ini')
+            config.read(os.path.join(self.tb_path, 'profiles.ini'))
             for sect in config.sections():
-                for item in config[sect]:
-                    if (item == 'locked' and config[sect][item] == '1'):
-                        profile = config[sect]['default']
+                if sect.lower().startswith('install') and config.getboolean(sect, 'locked', fallback=False):
+                    profile = config.get(sect, 'default', fallback=None)
+                    if profile:
                         break
-                if (profile):
-                    break
+            if not profile:
+                for sect in config.sections():
+                    if config.has_option(sect, 'path') and config.getboolean(sect, 'default', fallback=False):
+                        profile = config[sect]['path']
+                        break
+            if not profile:
+                for sect in config.sections():
+                    if sect.lower().startswith('install'):
+                        profile = config.get(sect, 'default', fallback=None)
+                        if profile:
+                            break
             if (not profile):
                 raise errors.AuthorizationError('It is not possible to find current Thunderbird profile. Use --tb-profile instead.')
-            profile = self.tb_path+'/'+profile
+            if not os.path.isabs(profile):
+                profile = os.path.join(self.tb_path, profile)
         self.tb_prefs = None
         try:
             pref_file = profile+'/prefs.js'
@@ -82,12 +94,15 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
 
         db_path = profile+'/global-messages-db.sqlite'
         try:
-            self.con = sqlite3.connect(db_path)
+            self.con = sqlite3.connect(db_path, timeout=30)
             self.cursor = self.con.cursor()
             self.cursor.execute("SELECT * FROM messagesText_content ORDER BY docid DESC LIMIT 1")
             self.cursor.fetchone()
-        except sqlite3.OperationalError:
-            raise errors.AuthorizationError('It is not possible to connect to Thunderbird database.')
+        except sqlite3.OperationalError as e:
+            message = 'It is not possible to connect to Thunderbird database.'
+            if 'locked' in str(e).lower():
+                message += ' Close stale Thunderbird processes or disable storage.sqlite.exclusiveLock.enabled to allow shared access.'
+            raise errors.AuthorizationError(message) from e
 
     def get_chall_pref(self, domain):
         # pylint: disable=unused-argument,missing-function-docstring
@@ -161,11 +176,15 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
                         raise errors.AuthorizationError('Cannot create reply message. You may use --tb-unsafe but be aware that no security checks will be performed. USE IT AT YOUR OWN RISK.')
 
                     response,body = castle.utils.ChallengeFromSubject(res_content[2], achall)
-                body = body.replace('\r','%0D')
-                body = body.replace('\n','%0A')
-                cmd_url = f'from={achall.domain},to={achall.challb.chall.from_addr},subject=Re: {res_content[2]},body={body},format=text'
+                cmd_url = ','.join((
+                    f'from={quote(str(achall.domain), safe="")}',
+                    f'to={quote(str(achall.challb.chall.from_addr), safe="")}',
+                    f'subject={quote(str(res_content[2]), safe="")}',
+                    f'body={quote(body, safe="")}',
+                    'format=text'
+                ))
                 if (mid):
-                    cmd_url += f',in-reply-to=<{mid}>'
+                    cmd_url += f',in-reply-to={quote("<{}>".format(mid), safe="")}'
                 cmd = [
                     self.tb_bin,
                     '-compose',
@@ -182,7 +201,7 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
 
     def __parse_tb_prefs(self, pref_file):
         r = {}
-        with open(pref_file,'r') as f:
+        with open(pref_file, 'r', encoding='utf-8', errors='replace') as f:
             def set(my_dict, key_string, value):
                 keys = key_string.split(".")
                 for key in keys[:-1]:
@@ -207,10 +226,17 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
             return self.conf('bin')
 
         import psutil
-        tb_bin = None
+        tb_bin = shutil.which('thunderbird')
+        if tb_bin:
+            return tb_bin
         for p in psutil.process_iter():
-            if ('thunderbird' in p.name()):
-                tb_bin = p.exe()
+            try:
+                if ('thunderbird' in p.name().lower()):
+                    tb_bin = p.exe()
+                    if tb_bin:
+                        return tb_bin
+            except psutil.Error:
+                continue
 
         if (not tb_bin):
             raise errors.AuthorizationError('Cannot find Thunderbird binary/executable. Use --tb-bin to provide the path.')

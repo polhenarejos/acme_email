@@ -162,13 +162,15 @@ python cli.py cert -e address@domain.com --outlook --outlook-account MyPersonalA
 Note: Due to limitations in Certbot, Outlook must run with Administrator rights.
 
 #### Using Thunderbird authenticator
-With this authenticator, no login and password are provided in the CLI since it uses Thudnerbird client to manage the account. This authenticator works with OAuth email providers.
+This authenticator uses an existing Thunderbird profile, so no account credentials are provided on the CLI. It works with accounts configured through OAuth providers.
 
 To utilize the Thunderbird authenticator for automatically replying to the ACME Email Challenge without user interaction, follow these steps:
 1. Open your Thunderbird client.
 2. Execute the client `cli.py` with the `--tb` parameter.
-3. In case of security error, pass the `--tb-unsafe` parameter to bypass these checks.
-4. After receiving the ACME challenge, a pop-up will appear with the response in the body. Just click on Send and **do not modify any value**.
+3. Use `--tb-unsafe` only if you accept bypassing email validation; it does not fix profile or database access errors.
+4. After receiving the ACME challenge, a compose window will open with a plain-text response and the original challenge subject. Click Send and **do not modify any value**.
+
+Keep Thunderbird running with the target profile so it can receive and index the challenge email. On Linux, the default profile root is `~/.thunderbird`; use `--tb-profile` and `--tb-bin` for nonstandard locations. If the profile database is locked, close stale Thunderbird processes. If it remains locked while Thunderbird is running, set `storage.sqlite.exclusiveLock.enabled` to `false` in Thunderbird's Config Editor and restart Thunderbird. When Certbot's default config, work, or log directories are not writable, pass writable paths with `--config-dir`, `--work-dir`, and `--logs-dir`.
 
 For example:
 
