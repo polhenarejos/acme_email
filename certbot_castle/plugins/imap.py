@@ -75,6 +75,7 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
     def __init__(self, *args, **kwargs):
         super(Authenticator, self).__init__(*args, **kwargs)
         self.__in_idle = False
+        self.__pending_idle_responses = []
 
     @classmethod
     def add_parser_arguments(cls, add):
@@ -135,8 +136,10 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
         display_util.notification(text,pause=False)
         sent = False
         for i in range(60):
+            idle_resp = self.__pending_idle_responses
+            self.__pending_idle_responses = []
             try:
-                idle_resp = self.imap.idle_check(timeout=1)
+                idle_resp.extend(self.imap.idle_check(timeout=1))
             except (imaplib.IMAP4.abort, OSError):
                 logger.warning("IMAP IDLE connection dropped. Reconnecting...")
                 self.__in_idle = False
@@ -194,7 +197,18 @@ class Authenticator(common.Plugin, interfaces.Authenticator, metaclass=abc.ABCMe
     def __idle(self,on):
         if (on == True):
             if (not self.__in_idle):
-                self.imap.idle()
+                self.imap._imap.response('EXISTS')
+                try:
+                    self.imap.idle()
+                except imapclient.exceptions.IMAPClientError:
+                    _, exists = self.imap._imap.response('EXISTS')
+                    if not exists or exists == [None]:
+                        raise
+                    self.__pending_idle_responses.extend((int(count), b'EXISTS') for count in exists)
+                    while self.imap._imap._get_response() is not None:
+                        _, exists = self.imap._imap.response('EXISTS')
+                        if exists and exists != [None]:
+                            self.__pending_idle_responses.extend((int(count), b'EXISTS') for count in exists)
             self.__in_idle = True
         else:
             if (self.__in_idle):
